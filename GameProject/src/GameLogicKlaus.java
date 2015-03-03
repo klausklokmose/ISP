@@ -27,11 +27,9 @@ public class GameLogicKlaus implements IGameLogic {
 	}
 
 	public Winner gameFinished() {
+		// TODO Write your implementation for this method
 		if(turns >= 7){
-			// TODO Write your implementation for this method
-			
 			return Winner.NOT_FINISHED;
-			
 		}else{
 			return Winner.NOT_FINISHED;
 		}
