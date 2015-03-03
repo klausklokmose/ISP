@@ -9,18 +9,52 @@ public class TestingFunctions {
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		board = new int[4][4];
+//		board = new int[4][4];
 		
-		queueOne = new PriorityQueue<>();
+//		queueOne = new PriorityQueue<>();
 //		queueOne.add(new Pair(0, 2));
 //		queueOne.add(new Pair(0, 1));
 //		queueOne.add(new Pair(1, 1));
-		insertCoin(0, 1);
+//		insertCoin(0, 1);
 //		insertCoin(0, 2);
-		insertCoin(0, 1);
-		insertCoin(0, 1);
-		printBoard();
-		printQueueOne();
+//		insertCoin(0, 1);
+//		insertCoin(0, 1);
+//		printBoard();
+//		printQueueOne();
+		
+		Pair[] pairs = new Pair[]{new Pair(0, 5), new Pair(0, 3), new Pair(0, 2), 
+								new Pair(1, 5), new Pair(1, 4), new Pair(1, 3),new Pair(1, 2)};
+		int column = 0;
+		int barrier = 4;
+		int lastRow = -1;
+		for (int i = 0; i < pairs.length; i++) {
+			//reset
+			if(pairs[i].getColumn() != column){
+				System.out.println("reset");
+				column = pairs[i].getColumn();
+				barrier = 4;
+				lastRow = -1;
+			}
+			if(lastRow == -1){
+				System.out.println("set row");
+				lastRow = pairs[i].getRow();
+			}
+			System.out.println("lastRow"+lastRow);
+			System.out.println("thisRow"+pairs[i].getRow());
+			int diff = lastRow-pairs[i].getRow();
+			if(diff == 1 || diff == 0){
+				System.out.println("decrease barrier");
+				barrier--;
+				lastRow = pairs[i].getRow();
+			}else{
+				lastRow = -1;
+			}
+			
+			if(barrier == 0){
+				System.out.println("found 4 coins!! in column "+column);
+				break;
+			}
+		}
 	}
 
 	private static void printBoard() {
