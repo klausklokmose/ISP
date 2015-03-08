@@ -1,5 +1,4 @@
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
 
@@ -10,20 +9,23 @@ public class GameLogicKlaus implements IGameLogic {
 	public int[][] board;
 	private int turns;
 	private final int FOUR = 4;
-	private final int ADVERSARY = 2;
+	private final int ADVERSARY = 42;
+	public int playerScore;
+	public int adversaryScore;
 
 	private PriorityQueue<Action> queueMAX;
 	private PriorityQueue<Action> queueMIN;
-	private boolean trace =false;
+	private boolean trace = false;
 
 	public GameLogicKlaus() {
 		// TODO Write your implementation for this method
 	}
 
-	public void print(String str){
-		if(trace )
+	public void print(String str) {
+		if (trace)
 			System.out.println(str);
 	}
+
 	public void initializeGame(int noCols, int noRows, int playerID) {
 		this.noCols = noCols;
 		this.noRows = noRows;
@@ -33,19 +35,27 @@ public class GameLogicKlaus implements IGameLogic {
 		board = new int[noCols][noRows];
 		queueMAX = new PriorityQueue<>();
 		queueMIN = new PriorityQueue<>();
+		playerScore = adversaryScore = winningPositions(noCols)
+				* winningPositions(noRows) * 2 // DIAGONAL (UP AND DOWN)
+				+ noRows * winningPositions(noCols) // HORIZONTAL
+				+ noCols * winningPositions(noRows); // VERTICAL
+	}
+
+	private int winningPositions(int n) {
+		return (n % FOUR) + 1;
 	}
 
 	public Winner gameFinished() {
 		// TODO Write your implementation for this method
-			int util = utility(board);
-			if (util == FOUR) {
-				return Winner.PLAYER2;
-			}else if(util == -FOUR){
-				return Winner.PLAYER1;
-			}else if(util == 0){
-				return Winner.TIE;
-			}
-			return Winner.NOT_FINISHED;
+		int util = utility(board);
+		if (util == 1) {
+			return Winner.PLAYER1;
+		} else if (util == -1) {
+			return Winner.PLAYER2;
+		} else if (util == 0) {
+			return Winner.TIE;
+		}
+		return Winner.NOT_FINISHED;
 	}
 
 	public void insertCoin(int column, int playerID) {
@@ -75,8 +85,9 @@ public class GameLogicKlaus implements IGameLogic {
 			}
 
 			(playerID == this.playerID ? queueMAX : queueMIN).add(p);
-			if(trace)
+			if (trace)
 				printQueues();
+			printBoard();
 		} else {
 			print("you can't insert a coin here, because it is full!");
 		}
@@ -84,109 +95,115 @@ public class GameLogicKlaus implements IGameLogic {
 	}
 
 	private Action alpha_beta_search(int[][] stat) {
-		int[][] state = stat.clone();
-		int alpha = Integer.MIN_VALUE;
-		int beta = Integer.MAX_VALUE;
-		int max = Integer.MIN_VALUE;
+		int[][] state = deepCopyIntMatrix(stat);
+		double alpha = Double.NEGATIVE_INFINITY;
+		double beta = Double.POSITIVE_INFINITY;
+		double max = Double.NEGATIVE_INFINITY;
 		List<Action> actions = actions(state);
 		Action action = null;
-		if (!actions.isEmpty()) {
-			for (Action a : actions) {
-				int value = min_value(state, alpha, beta, 0);
-				if(value > max){
-					max = value;
-					action = a;
-				}
+		for (Action a : actions) {
+			double value = min_value(result(state, a, this.playerID), alpha,
+					beta, 0);
+			if (value > max) {
+				max = value;
+				action = a;
 			}
-		}else{
-			print("there are no more actions!!!");
 		}
-		if(trace)
+
+		if (trace)
 			printBoard();
 		return action;
 	}
 
-	private int max_value(int[][] s, int alpha, int beta, int depth) {
+	public double max_value(int[][] s, double alpha, double beta, int depth) {
 		int[][] state = deepCopyIntMatrix(s);
 		// if we have reached the limit
 		if (cutoff_test(state, depth))
 			return EVAL(state);
-		
+
 		int utility = utility(state);
-		if (utility == 1){
-			return FOUR;
-		}else if(utility == -1){
-			return -FOUR;
-		}else if(utility == 0){
-			return 0;
+		if (utility >= 0) {
+			return utility;
 		}
 		List<Action> actions = actions(state); // possible actions from current
-											// state
-		if (!actions.isEmpty()) {
-			int maximum = Integer.MIN_VALUE;
-			for (Action a : actions) {
-				int test = min_value(result(state, a, ADVERSARY), alpha, beta,
-						depth);
-				if (maximum < test) {
-					maximum = test;
-				}
-
-				if (maximum >= beta)
-					return maximum;
-				alpha = Math.max(alpha, maximum);
-			}
-			return maximum;
-		}else{
-			print("MAX actions is empty");
+												// state
+		double maximum = Double.NEGATIVE_INFINITY;
+		for (Action a : actions) {
+			double minValue = min_value(result(state, a, ADVERSARY), alpha,
+					beta, depth);
+			maximum = Math.max(maximum, minValue);
+			if (maximum >= beta)
+				return maximum;
+			alpha = Math.max(alpha, maximum);
 		}
-		return EVAL(state);
+		return maximum;
 	}
 
-	private int min_value(int[][] s, int alpha, int beta, int depth) {
+	public double min_value(int[][] s, double alpha, double beta, int depth) {
 		int[][] state = deepCopyIntMatrix(s);
 		// if we have reached the limit
 		if (cutoff_test(state, depth))
 			return EVAL(state);
 		int utility = utility(state);
-		if (utility == 1){
-			return FOUR;
-		}else if(utility == -1){
-			return -FOUR;
-		}else if(utility == 0){
-			return 0;
+		if (utility >= 0) {
+			return utility;
 		}
-		
-		List<Action> actions = actions(state);
-		if (!actions.isEmpty()) {
-			int minimum = Integer.MAX_VALUE;
-			for (Action a : actions) {
-				int test = max_value(result(state, a, this.playerID), alpha,
-						beta, depth);
-				if (minimum > test) {
-					minimum = test;
-				}
 
-				if (minimum <= alpha)
-					return minimum;
-				beta = Math.min(beta, minimum);
-			}
-			return minimum;
-		}else{
-			print("MIN actions is empty");
+		List<Action> actions = actions(state);
+		double minimum = Double.POSITIVE_INFINITY;
+		for (Action a : actions) {
+			double maxValue = max_value(result(state, a, this.playerID), alpha,
+					beta, depth);
+			minimum = Math.min(minimum, maxValue);
+
+			if (minimum <= alpha)
+				return minimum;
+			beta = Math.min(beta, minimum);
 		}
-		return EVAL(state);
+		return minimum;
 	}
 
 	private boolean cutoff_test(int[][] state, int depth) {
-		if (depth++ == 2)
+		if (depth >= 6) {
+			depth++;
 			return true;
+		}
 		return false;
 	}
 
-	public int EVAL(int[][] s) {
+	public double NEWEVAL(int[][] s) {
+		int[][] state = deepCopyIntMatrix(s);
+		int result = 0;
+		int noHorizontalPosibilities = winningPositions(noCols);
+		int noVerticalPosibilities = winningPositions(noRows);
+
+		int verticalPossibilities = 0;
+		for (int col = 0; col < state.length; col++) {
+			// vertical
+			for (int j = 0; j < noVerticalPosibilities; j++) {
+				int barrier = 0;
+				for (int k = j; k < FOUR + j; k++) {
+					if (state[col][k] != ADVERSARY) {
+						barrier++;
+					}
+				}
+				if (barrier == FOUR) {
+					verticalPossibilities++;
+				}
+			}
+
+			// HORIZONTAL
+			
+
+		}
+		result = verticalPossibilities;
+		return result;
+	}
+
+	public double EVAL(int[][] s) {
 		int[][] state = deepCopyIntMatrix(s);
 		// find all actions that MAX has taken
-		List<Action> pairs = new ArrayList<>();
+		PriorityQueue<Action> pairs = new PriorityQueue<>();
 		for (int col = 0; col < state.length; col++) {
 			for (int row = 0; row < state[col].length; row++) {
 				if (state[col][row] == this.playerID) {
@@ -194,56 +211,77 @@ public class GameLogicKlaus implements IGameLogic {
 				}
 			}
 		}
-		// sort the coordinates first by column asc. and then by row desc.
-		pairs.sort(new Comparator<Action>() {
-			@Override
-			public int compare(Action thizz, Action that) {
-				return thizz.compareTo(that);
-			}
-		});
 
 		int maxConnectedNodes = findMatch(pairs
 				.toArray(new Action[pairs.size()]));
-		print("MAX CONNECTED = " + maxConnectedNodes);
-		return maxConnectedNodes;// winner
+		return maxConnectedNodes / 4;
+		// int[][] state = s;
+		// PriorityQueue<Action> player1 = new PriorityQueue<>();
+		// PriorityQueue<Action> player2 = new PriorityQueue<>();
+		// for (int column = 0; column < state.length; column++) {
+		// for (int row = 0; row < state[column].length; row++) {
+		//
+		// int player = state[column][row];
+		// if (player == this.playerID) {
+		// player1.add(new Action(column, row));
+		// } else if (player != 0) {
+		// player2.add(new Action(column, row));
+		// }
+		// }
+		// }
+		// Action[] playerOneCoins = player1.toArray(new
+		// Action[player1.size()]);
+		// Action[] playerTwoCoint = player2.toArray(new
+		// Action[player2.size()]);
+		//
+		// int maxP1 = findMatch(playerOneCoins);
+		// int maxP2 = findMatch(playerTwoCoint);
+		// if (maxP1 < maxP2) {
+		// return -maxP2;
+		// } else if (maxP1 > maxP2) {
+		// return maxP1;
+		// } else {
+		// return 0;
+		// }
 	}
 
-	private int[][] result(int[][] state, Action pair, int playerID) {
-		state[pair.getColumn()][pair.getRow()] = playerID;
-		return state;
+	public int[][] result(int[][] state, Action pair, int playerID) {
+		int[][] s = deepCopyIntMatrix(state);
+		s[pair.getColumn()][pair.getRow()] = playerID;
+		return s;
 	}
 
 	public int utility(int[][] s) {
-		int[][] state = deepCopyIntMatrix(s);
-		PriorityQueue<Action> player1 = new PriorityQueue<>();
+		int[][] state = s;
+		PriorityQueue<Action> AIqueue = new PriorityQueue<>();
 		PriorityQueue<Action> player2 = new PriorityQueue<>();
 		for (int column = 0; column < state.length; column++) {
 			for (int row = 0; row < state[column].length; row++) {
-				
+
 				int player = state[column][row];
 				if (player == this.playerID) {
-					player1.add(new Action(column, row));
-				} else if (player != 0){
+					AIqueue.add(new Action(column, row));
+				} else if (player != 0) {
 					player2.add(new Action(column, row));
 				}
 			}
 		}
-		Action[] playerOneCoins = player1.toArray(new Action[player1.size()]);
-		Action[] playerTwoCoint = player2.toArray(new Action[player2.size()]);
-		
-		int maxPlayer1 = findMatch(playerOneCoins);
-		int maxPlayer2 = findMatch(playerTwoCoint);
-		
-		if(maxPlayer1 == FOUR){
+		Action[] AICoins = AIqueue.toArray(new Action[AIqueue.size()]);
+		Action[] adversaryCoins = player2.toArray(new Action[player2.size()]);
+
+		int maxAIcoins = findMatch(AICoins);
+		int maxPlayer2 = findMatch(adversaryCoins);
+
+		if (maxAIcoins == FOUR) {
 			return 1;
 		}
-		if(maxPlayer2 == FOUR){
+		if (maxPlayer2 == FOUR) {
 			return -1;
 		}
-		if((playerOneCoins.length + playerTwoCoint.length)== (noCols*noRows)){
+		if ((AICoins.length + adversaryCoins.length) == (noCols * noRows)) {
 			return 0;
 		}
-		return -2; //game not ended
+		return -2; // game not ended
 	}
 
 	/**
@@ -294,8 +332,7 @@ public class GameLogicKlaus implements IGameLogic {
 			}
 
 			if (v_counter == FOUR) {
-				print("found 4 coins!! VERTICAL in column "
-						+ v_column);
+				print("found 4 coins!! VERTICAL in column " + v_column);
 				return v_counter;
 			} else if (maxConnected < v_counter) {
 				maxConnected = v_counter;
@@ -374,7 +411,7 @@ public class GameLogicKlaus implements IGameLogic {
 	}
 
 	public static List<Action> actions(int[][] state) {
-		int[][] s = state.clone();
+		int[][] s = deepCopyIntMatrix(state);
 		List<Action> actions = new ArrayList<Action>();
 
 		for (int column = 0; column < s.length; column++) {
@@ -394,8 +431,8 @@ public class GameLogicKlaus implements IGameLogic {
 					p = new Action(column, lastItemInRow);
 				}
 				actions.add(p);
-			}else{
-				
+			} else {
+
 			}
 		}
 		return actions;
@@ -414,20 +451,20 @@ public class GameLogicKlaus implements IGameLogic {
 		// TODO call search
 		printBoard();
 		Action a = alpha_beta_search(board);
-		System.out.println(a);
+		print("" + a);
 		int i = a.getColumn();
 		print("try column: " + i);
 		return i;
 	}
 
 	public void printBoard() {
-		print("........turn " + turns + ".......");
+		System.out.println("........turn " + turns + ".......");
 		for (int col = 0; col < board[0].length; col++) {
 			String str = "";
 			for (int j = 0; j < board.length; j++) {
 				str += "\t" + board[j][col];
 			}
-			print(str + "\n");
+			System.out.println(str + "\n");
 		}
 	}
 
@@ -441,14 +478,14 @@ public class GameLogicKlaus implements IGameLogic {
 			System.out.println(pa);
 		}
 	}
-	
+
 	public static int[][] deepCopyIntMatrix(int[][] input) {
-	    if (input == null)
-	        return null;
-	    int[][] result = new int[input.length][];
-	    for (int r = 0; r < input.length; r++) {
-	        result[r] = input[r].clone();
-	    }
-	    return result;
+		if (input == null)
+			return null;
+		int[][] result = new int[input.length][];
+		for (int r = 0; r < input.length; r++) {
+			result[r] = input[r].clone();
+		}
+		return result;
 	}
 }
