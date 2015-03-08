@@ -13,8 +13,6 @@ public class GameLogicKlaus implements IGameLogic {
 	private PriorityQueue<Action> queueOne;
 	private PriorityQueue<Action> queueTwo;
 	
-	
-	
 	public GameLogicKlaus() {
 		// TODO Write your implementation for this method
 	}
