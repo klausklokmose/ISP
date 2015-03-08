@@ -16,6 +16,7 @@ public class GameLogicKlaus implements IGameLogic {
 	private PriorityQueue<Action> queueMAX;
 	private PriorityQueue<Action> queueMIN;
 	private boolean trace = false;
+	private long startTime;
 
 	public GameLogicKlaus() {
 		// TODO Write your implementation for this method
@@ -95,6 +96,8 @@ public class GameLogicKlaus implements IGameLogic {
 	}
 
 	private Action alpha_beta_search(int[][] stat) {
+		startTime = System.currentTimeMillis();
+
 		int[][] state = deepCopyIntMatrix(stat);
 		double alpha = Double.NEGATIVE_INFINITY;
 		double beta = Double.POSITIVE_INFINITY;
@@ -103,7 +106,7 @@ public class GameLogicKlaus implements IGameLogic {
 		Action action = null;
 		for (Action a : actions) {
 			double value = min_value(result(state, a, this.playerID), alpha,
-					beta, 0);
+					beta, 10);
 			if (value > max) {
 				max = value;
 				action = a;
@@ -117,9 +120,10 @@ public class GameLogicKlaus implements IGameLogic {
 
 	public double max_value(int[][] s, double alpha, double beta, int depth) {
 		int[][] state = deepCopyIntMatrix(s);
+		depth = depth-1;
 		// if we have reached the limit
 		if (cutoff_test(state, depth))
-			return EVAL(state);
+			return NEWEVAL(state);
 
 		int utility = utility(state);
 		if (utility >= 0) {
@@ -141,9 +145,10 @@ public class GameLogicKlaus implements IGameLogic {
 
 	public double min_value(int[][] s, double alpha, double beta, int depth) {
 		int[][] state = deepCopyIntMatrix(s);
+		depth = depth-1;
 		// if we have reached the limit
 		if (cutoff_test(state, depth))
-			return EVAL(state);
+			return NEWEVAL(state);
 		int utility = utility(state);
 		if (utility >= 0) {
 			return utility;
@@ -164,10 +169,13 @@ public class GameLogicKlaus implements IGameLogic {
 	}
 
 	private boolean cutoff_test(int[][] state, int depth) {
-		if (depth >= 6) {
-			depth++;
+		long end = System.currentTimeMillis();
+		if((end-startTime) >= 10_000){
 			return true;
 		}
+//		if (depth <= 0) {
+//			return true;
+//		}
 		return false;
 	}
 
@@ -177,7 +185,6 @@ public class GameLogicKlaus implements IGameLogic {
 		int noHorizontalPosibilities = winningPositions(noCols);
 		int noVerticalPosibilities = winningPositions(noRows);
 
-		int verticalPossibilities = 0;
 		for (int col = 0; col < state.length; col++) {
 			// vertical
 			for (int j = 0; j < noVerticalPosibilities; j++) {
@@ -188,16 +195,61 @@ public class GameLogicKlaus implements IGameLogic {
 					}
 				}
 				if (barrier == FOUR) {
-					verticalPossibilities++;
+					result++;
 				}
 			}
 
-			// HORIZONTAL
+			//DIAGONAL
+			for (int r = 0; r < state[col].length; r++) {
+				
+				Action[] diagonal_up = new Action[] {new Action(col, r), new Action(col + 1, r - 1),
+						new Action(col + 2, r - 2), new Action(col + 3, r - 3) };
+				Action[] diagonal_dwn = new Action[] {new Action(col, r), new Action(col + 1, r + 1),
+						new Action(col + 2, r + 2), new Action(col + 3, r + 3) };
 			
+				int d_barrier = 0;
+				int u_barrier = 0;
+				for (int i = 0; i < diagonal_dwn.length; i++) {
+					int colD = diagonal_dwn[i].getColumn();
+					int rowD = diagonal_dwn[i].getRow();
+					if(validBounds(colD, rowD) && state[colD][rowD]!=ADVERSARY){
+						d_barrier++;
+					}
+					int colUp = diagonal_up[i].getColumn();
+					int rowUp = diagonal_up[i].getRow();
+					if(validBounds(colUp, rowUp) && state[colUp][rowUp] != ADVERSARY){
+						u_barrier++;
+					}
+				}
+				if(d_barrier == FOUR){
+					result++;
+				}
+				if(u_barrier == FOUR){
+					result++;
+				}
+			}
 
+		} //END COL LOOP
+		
+		// HORIZONTAL
+		for (int r = 0; r < noRows; r++) {
+			for (int i = 0; i < noHorizontalPosibilities; i++) {
+				int barrier = 0;
+				for (int j = i; j < FOUR+i; j++) {
+					if (state[j][r] != ADVERSARY) {
+						barrier++;
+					}
+				}
+				if(barrier == FOUR){
+					result++;
+				}
+			}
 		}
-		result = verticalPossibilities;
 		return result;
+	}
+
+	private boolean validBounds(int colUp, int rowUp) {
+		return !(colUp < 0 || colUp > noCols-1 || rowUp < 0 || rowUp > noRows-1);
 	}
 
 	public double EVAL(int[][] s) {
@@ -215,37 +267,10 @@ public class GameLogicKlaus implements IGameLogic {
 		int maxConnectedNodes = findMatch(pairs
 				.toArray(new Action[pairs.size()]));
 		return maxConnectedNodes / 4;
-		// int[][] state = s;
-		// PriorityQueue<Action> player1 = new PriorityQueue<>();
-		// PriorityQueue<Action> player2 = new PriorityQueue<>();
-		// for (int column = 0; column < state.length; column++) {
-		// for (int row = 0; row < state[column].length; row++) {
-		//
-		// int player = state[column][row];
-		// if (player == this.playerID) {
-		// player1.add(new Action(column, row));
-		// } else if (player != 0) {
-		// player2.add(new Action(column, row));
-		// }
-		// }
-		// }
-		// Action[] playerOneCoins = player1.toArray(new
-		// Action[player1.size()]);
-		// Action[] playerTwoCoint = player2.toArray(new
-		// Action[player2.size()]);
-		//
-		// int maxP1 = findMatch(playerOneCoins);
-		// int maxP2 = findMatch(playerTwoCoint);
-		// if (maxP1 < maxP2) {
-		// return -maxP2;
-		// } else if (maxP1 > maxP2) {
-		// return maxP1;
-		// } else {
-		// return 0;
-		// }
 	}
 
 	public int[][] result(int[][] state, Action pair, int playerID) {
+//		int playerID = (turns % 2+1)
 		int[][] s = deepCopyIntMatrix(state);
 		s[pair.getColumn()][pair.getRow()] = playerID;
 		return s;
@@ -257,7 +282,6 @@ public class GameLogicKlaus implements IGameLogic {
 		PriorityQueue<Action> player2 = new PriorityQueue<>();
 		for (int column = 0; column < state.length; column++) {
 			for (int row = 0; row < state[column].length; row++) {
-
 				int player = state[column][row];
 				if (player == this.playerID) {
 					AIqueue.add(new Action(column, row));
@@ -282,132 +306,6 @@ public class GameLogicKlaus implements IGameLogic {
 			return 0;
 		}
 		return -2; // game not ended
-	}
-
-	/**
-	 * @param actions
-	 * @param playerID
-	 * @return 1 if 4 coins are connected, otherwise -2
-	 */
-	private int findMatch(Action[] actions) {
-		// the higher the barrier is, the more connected coins there are
-		int maxConnected = 0;
-		int v_column = 0;
-		int v_counter = 0;
-		int v_lastRow = -1;
-
-		int[] h_barrier = new int[noRows];
-		int[] h_last = new int[noRows];
-		for (int i = 0; i < h_last.length; i++) {
-			h_last[i] = -1; // init
-			h_barrier[i] = 0;
-		}
-
-		for (Action action : actions) {
-			// Action p = a;
-			int r = action.getRow();
-			int c = action.getColumn();
-			print("LOOKING AT ACTION" + action);
-
-			// VERTICAL
-			if (c != v_column) { // reset vertical
-				print("reset vertical");
-				v_column = c;
-				v_counter = 0;
-				v_lastRow = -1;
-			}
-
-			if (v_lastRow == -1) {
-				print("set row");
-				v_lastRow = r;
-			}
-
-			int v_diff = v_lastRow - r;
-			if (v_diff == 1 || v_diff == 0) {
-				print("VERTICAL: decrease barrier");
-				v_lastRow = r;
-				v_counter++;
-			} else {
-				v_lastRow = -1;
-			}
-
-			if (v_counter == FOUR) {
-				print("found 4 coins!! VERTICAL in column " + v_column);
-				return v_counter;
-			} else if (maxConnected < v_counter) {
-				maxConnected = v_counter;
-			}
-
-			// HORIZONTAL
-			if (h_last[r] == -1) {
-				print("inital h_how at row=" + r);
-				h_last[r] = r;
-			}
-
-			int h_diff = h_last[r] - r;
-			if (h_diff == 0) {
-				h_last[r] = r;
-				h_barrier[r]++;
-			} else { // reset
-				h_last[r] = -1;
-				h_barrier[r] = 0;
-			}
-
-			if (h_barrier[r] == FOUR) {
-				print("found 4 coins!! HORIZONTAL in row " + r);
-				return FOUR;
-			} else if (maxConnected < h_barrier[r]) {
-				maxConnected = h_barrier[r];
-			}
-
-			// DIAGONAL running time = noPairs*4
-			Action[] diagonal_up = new Action[] { new Action(c + 1, r - 1),
-					new Action(c + 2, r - 2), new Action(c + 3, r - 3) };
-			Action[] diagonal_dwn = new Action[] { new Action(c + 1, r + 1),
-					new Action(c + 2, r + 2), new Action(c + 3, r + 3) };
-			int upDiagonalBarrier, dwnDiagonalBarrier;
-			upDiagonalBarrier = dwnDiagonalBarrier = 1; // 4 coins minus 1 (the
-														// one we are
-			// looking at)
-
-			for (Action a : actions) {
-				int iRow = a.getRow();
-				int iColumn = a.getColumn();
-				for (int j = 0; j < diagonal_up.length; j++) {
-					if (iColumn == diagonal_up[j].getColumn()
-							&& iRow == diagonal_up[j].getRow()) {
-						upDiagonalBarrier++;
-						print("DIAGONAL UP: decrease barrier: "
-								+ upDiagonalBarrier + "\t" + a);
-						break;
-					} else if (iColumn == diagonal_dwn[j].getColumn()
-							&& iRow == diagonal_dwn[j].getRow()) {
-						dwnDiagonalBarrier++;
-						print("DIAGONAL DWN: decrease barrier: "
-								+ dwnDiagonalBarrier + "\t" + a);
-						break;
-					}
-				}
-				if (upDiagonalBarrier == FOUR || dwnDiagonalBarrier == FOUR) { // early
-																				// return!
-																				// we
-																				// do
-					// not need to
-					// iterate more
-					print("FOUND DIAGONAL early MATCH");
-					return FOUR;
-				}
-			}
-			if (maxConnected < upDiagonalBarrier) {
-				maxConnected = upDiagonalBarrier;
-			}
-			if (maxConnected < dwnDiagonalBarrier) {
-				maxConnected = dwnDiagonalBarrier;
-			}
-
-		}// END LOOP THROUGH
-
-		return maxConnected;
 	}
 
 	public static List<Action> actions(int[][] state) {
@@ -478,6 +376,146 @@ public class GameLogicKlaus implements IGameLogic {
 			System.out.println(pa);
 		}
 	}
+
+	/**
+		 * @param actions
+		 * @param playerID
+		 * @return 1 if 4 coins are connected, otherwise -2
+		 */
+		private int findMatch(Action[] actions) {
+			// the higher the barrier is, the more connected coins there are
+			int maxConnected = 0;
+			int v_column = 0;
+			int v_counter = 0;
+			int v_lastRow = -1;
+		
+			int[] h_barrier = new int[noRows];
+			int[] h_last = new int[noRows];
+			for (int i = 0; i < h_last.length; i++) {
+				h_last[i] = -1; // init
+	//			h_barrier[i] = 0;
+			}
+		
+			for (Action action : actions) {
+				// Action p = a;
+				int r = action.getRow();
+				int c = action.getColumn();
+	//			print("LOOKING AT ACTION" + action);
+		
+				// VERTICAL
+				if (c != v_column) { // reset vertical
+	//				print("reset vertical");
+					v_column = c;
+					v_counter = 0;
+					v_lastRow = -1;
+				}
+		
+				if (v_lastRow == -1) {
+	//				print("set row");
+					v_lastRow = r;
+				}
+		
+				int v_diff = v_lastRow - r;
+				if (v_diff == 1 || v_diff == 0) {
+	//				print("VERTICAL: decrease barrier");
+					v_lastRow = r;
+					v_counter++;
+				} else {
+					v_lastRow = -1;
+					v_counter = 0;
+				}
+		
+				if (v_counter == FOUR) {
+	//				print("found 4 coins!! VERTICAL in column " + v_column);
+//					System.out.println("VERTICAL: "+FOUR);
+					return v_counter;
+				} else if (maxConnected < v_counter) {
+					maxConnected = v_counter;
+//					System.out.println("VERTICAL: "+maxConnected);
+				}
+		
+				// HORIZONTAL
+				if (h_barrier[r] == FOUR) {
+	//				print("found 4 coins!! HORIZONTAL in row " + r);
+//					System.out.println("HORIZONTAL: "+FOUR);
+					return FOUR;
+				} else if (maxConnected < h_barrier[r]) {
+					maxConnected = h_barrier[r];
+//					System.out.println("HORIZONTAL: "+maxConnected);
+				}
+				
+				if (h_last[r] == -1) {
+	//				print("inital h_how at row=" + r);
+					h_last[r] = r;
+	//				h_barrier[r] = 1;
+				}
+		
+				int h_diff = h_last[r] - r;
+				if ( h_diff == 1 || h_diff == 0) {
+					h_last[r] = r;
+					h_barrier[r]++;
+				} else { // reset
+					if (maxConnected < h_barrier[r]) {
+						maxConnected = h_barrier[r];
+//						System.out.println("HORIZONTAL: "+maxConnected);
+					}
+					h_last[r] = -1;
+					h_barrier[r] = 0;
+				}
+		
+	
+		
+				// DIAGONAL running time = noPairs*4
+				Action[] diagonal_up = new Action[] { new Action(c + 1, r - 1),
+						new Action(c + 2, r - 2), new Action(c + 3, r - 3) };
+				Action[] diagonal_dwn = new Action[] { new Action(c + 1, r + 1),
+						new Action(c + 2, r + 2), new Action(c + 3, r + 3) };
+				int upDiagonalBarrier, dwnDiagonalBarrier;
+				upDiagonalBarrier = dwnDiagonalBarrier = 1; // 4 coins minus 1 (the
+															// one we are
+				// looking at)
+		
+				for (Action a : actions) {
+					int iRow = a.getRow();
+					int iColumn = a.getColumn();
+					for (int j = 0; j < diagonal_up.length; j++) {
+						if (iColumn == diagonal_up[j].getColumn()
+								&& iRow == diagonal_up[j].getRow()) {
+							upDiagonalBarrier++;
+	//						print("DIAGONAL UP: decrease barrier: "
+	//								+ upDiagonalBarrier + "\t" + a);
+							break;
+						} else if (iColumn == diagonal_dwn[j].getColumn()
+								&& iRow == diagonal_dwn[j].getRow()) {
+							dwnDiagonalBarrier++;
+	//						print("DIAGONAL DWN: decrease barrier: "
+	//								+ dwnDiagonalBarrier + "\t" + a);
+							break;
+						}
+					}
+					if (upDiagonalBarrier == FOUR || dwnDiagonalBarrier == FOUR) { // early
+																					// return!
+																					// we
+																					// do
+						// not need to
+						// iterate more
+	//					print("FOUND DIAGONAL early MATCH");
+						return FOUR;
+					}
+				}
+				if (maxConnected < upDiagonalBarrier) {
+//					System.out.println("DIAG UP: "+maxConnected);
+					maxConnected = upDiagonalBarrier;
+				}
+				if (maxConnected < dwnDiagonalBarrier) {
+//					System.out.println("DIAG DWN: "+maxConnected);
+					maxConnected = dwnDiagonalBarrier;
+				}
+		
+			}// END LOOP THROUGH
+		
+			return maxConnected;
+		}
 
 	public static int[][] deepCopyIntMatrix(int[][] input) {
 		if (input == null)
