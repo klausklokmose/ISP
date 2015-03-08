@@ -178,7 +178,11 @@ public class GameLogicKlaus implements IGameLogic {
 //		}
 		return false;
 	}
-
+	/**
+	 * New evaluation function. Evaluates all possible "connected four"
+	 * @param s state
+	 * @return a number of possible connect four for the state.
+	 */
 	public double NEWEVAL(int[][] s) {
 		int[][] state = deepCopyIntMatrix(s);
 		int result = 0;
@@ -251,7 +255,9 @@ public class GameLogicKlaus implements IGameLogic {
 	private boolean validBounds(int colUp, int rowUp) {
 		return !(colUp < 0 || colUp > noCols-1 || rowUp < 0 || rowUp > noRows-1);
 	}
-
+	
+	/*Old EVAL
+	 * 
 	public double EVAL(int[][] s) {
 		int[][] state = deepCopyIntMatrix(s);
 		// find all actions that MAX has taken
@@ -267,7 +273,7 @@ public class GameLogicKlaus implements IGameLogic {
 		int maxConnectedNodes = findMatch(pairs
 				.toArray(new Action[pairs.size()]));
 		return maxConnectedNodes / 4;
-	}
+	} */
 
 	public int[][] result(int[][] state, Action pair, int playerID) {
 //		int playerID = (turns % 2+1)
@@ -376,6 +382,17 @@ public class GameLogicKlaus implements IGameLogic {
 			System.out.println(pa);
 		}
 	}
+		/**
+		 * Check if there are 3 connected.  
+		 * @param state or action
+		 * @return action or something else
+		 */
+		private Action connectedCoins(int[][] state){
+			// check the sate
+			// if there are 3 connected
+				// return action that will give connected four
+			return null;
+		}
 
 	/**
 		 * @param actions
