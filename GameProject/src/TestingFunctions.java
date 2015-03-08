@@ -1,4 +1,5 @@
 import java.util.Arrays;
+import java.util.List;
 import java.util.PriorityQueue;
 
 
@@ -10,28 +11,26 @@ public class TestingFunctions {
 	private final static int noRows = 6;
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-//		board = new int[4][4];
+		GameLogicKlaus game = new GameLogicKlaus();
+		game.initializeGame(4, 4, 1);
 		
-//		queueOne = new PriorityQueue<>();
 //		queueOne.add(new Pair(0, 2));
 //		queueOne.add(new Pair(0, 1));
 //		queueOne.add(new Pair(1, 1));
-//		insertCoin(0, 1);
+		game.insertCoin(0, 1);
+		game.insertCoin(0, 1);
 //		insertCoin(0, 2);
 //		insertCoin(0, 1);
 //		insertCoin(0, 1);
 //		printBoard();
-//		printQueueOne();
-		
-		Action[] pairs_h = new Action[]{new Action(0, 5), new Action(0, 4), new Action(0, 3), 
-								new Action(1, 5), new Action(1, 4), new Action(1, 3),
-								new Action(2, 5), new Action(2, 3), 
-								new Action(3, 4)};
-//		Pair[] pairs_v = new Pair[]{new Pair(0, 5), new Pair(0, 3), new Pair(0, 2), 
-//				new Pair(1, 5), new Pair(1, 4), new Pair(1, 3),new Pair(1, 2)};
-		findMatch(pairs_h, 1);
+		List<Action> l = GameLogicKlaus.actions(game.board);
+		for (int i = 0; i < l.size(); i++) {
+			System.out.println(l.get(i));
+		}
 	}
 
+	
+	
 	private static int findMatch(Action[] actions, int playerID) {
 		int v_column = 0;
 		int v_barrier = 4;
@@ -146,37 +145,6 @@ public class TestingFunctions {
 				str += " "+board[j][i];
 			}
 			System.out.println(str);
-		}
-	}
-
-	public static void insertCoin(int column, int playerID) {
-		// TODO Write your implementation for this method
-		int[] col = board[column];
-		//[x, y] column, row
-		Action p = null ;
-		//the column is non-empty
-		if (col[0] == 0) {
-			boolean inserted = false;
-			for (int row = 0; row < col.length; row++) {
-				if (col[row] != 0) {
-					col[row - 1] = playerID;
-					inserted = true;
-					p = new Action(column, row-1);
-					break;
-				}
-			}
-			//the column must be empty
-			if (!inserted) {
-				col[col.length - 1] = playerID;
-				p = new Action(column, col.length-1);
-				inserted = true;
-			}
-		}else{
-			System.out.println("you can't insert a coin here, because it is full!");
-		}
-		//Testing print queues
-		if(playerID == 1){
-			queueOne.add(p);
 		}
 	}
 
