@@ -5,7 +5,6 @@ import java.util.PriorityQueue;
 
 public class TestingFunctions {
 
-	private static int[][] board;
 	private static PriorityQueue<Action> queueOne;
 	private static int turns = 0;
 	private final static int noRows = 6;
@@ -17,16 +16,32 @@ public class TestingFunctions {
 //		queueOne.add(new Pair(0, 2));
 //		queueOne.add(new Pair(0, 1));
 //		queueOne.add(new Pair(1, 1));
+		game.insertCoin(0, 2);
 		game.insertCoin(0, 1);
+		game.insertCoin(0, 2);
 		game.insertCoin(0, 1);
-//		insertCoin(0, 2);
-//		insertCoin(0, 1);
-//		insertCoin(0, 1);
-//		printBoard();
-		List<Action> l = GameLogicKlaus.actions(game.board);
-		for (int i = 0; i < l.size(); i++) {
-			System.out.println(l.get(i));
-		}
+		
+		game.insertCoin(1, 1);
+		game.insertCoin(1, 2);
+		game.insertCoin(1, 1);
+		game.insertCoin(1, 2);
+		
+		game.insertCoin(2, 2);
+		game.insertCoin(2, 2);
+		game.insertCoin(2, 1);
+		game.insertCoin(2, 1);
+		
+		game.insertCoin(3, 1);
+		game.insertCoin(3, 2);
+		game.insertCoin(3, 1);
+		game.insertCoin(3, 2);
+		System.out.println();
+//		List<Action> l = GameLogicKlaus.actions(game.board);
+//		for (int i = 0; i < l.size(); i++) {
+//			System.out.println(l.get(i));
+//		}
+		System.out.println(game.utility(game.board));
+		game.printBoard();
 	}
 
 	
@@ -137,17 +152,6 @@ public class TestingFunctions {
 	}
 	
 	
-	private static void printBoard() {
-		System.out.println("........turn "+turns+".......");
-		for (int i = 0; i < board.length; i++) {
-			String str = "";
-			for (int j = 0; j < board.length; j++) {
-				str += " "+board[j][i];
-			}
-			System.out.println(str);
-		}
-	}
-
 	private static void printQueueOne() {
 		for (Action pa : queueOne) {
 			System.out.println(pa);
