@@ -3,30 +3,49 @@ import java.util.List;
 import java.util.PriorityQueue;
 
 public class GameLogicKlaus implements IGameLogic {
+	//holds the state of the currently already played board.
+	public int[][] board;
 	private int noCols;
 	private int noRows;
-	private int playerID;
-	public int[][] board;
+	//each time a turn has been taken, the turns is incremented
 	private int turns;
+	
+	//holds the number of connected that the game needs.
 	private final int FOUR = 4;
-	private final int ADVERSARY = 42;
-	public int playerScore;
-	public int adversaryScore;
 
+	//player ids. The adversary is not 1 or 2, because we don't know if the ID this instance will get is 1 or 2.
+	private int playerID;
+	private final int ADVERSARY = 42;
+//	public int playerScore;
+//	public int adversaryScore;
+
+	//queues to hold already played actions, such that finding connected coins is easier.
 	private PriorityQueue<Action> queueMAX;
 	private PriorityQueue<Action> queueMIN;
+	
+	//true if prints should be done, false otherwise
 	private boolean trace = false;
+	
+	//overridden each time a turn has to be taken by this instance.
 	private long startTime;
 
 	public GameLogicKlaus() {
 		// TODO Write your implementation for this method
 	}
 
+	/**
+	 * print a string to stout if trace is true
+	 * @param str
+	 */
 	public void print(String str) {
 		if (trace)
 			System.out.println(str);
 	}
 
+	/**
+	 * initializes the game with a fresh board and sets the playerID of this instance.
+	 * 
+	 */
 	public void initializeGame(int noCols, int noRows, int playerID) {
 		this.noCols = noCols;
 		this.noRows = noRows;
@@ -36,18 +55,29 @@ public class GameLogicKlaus implements IGameLogic {
 		board = new int[noCols][noRows];
 		queueMAX = new PriorityQueue<>();
 		queueMIN = new PriorityQueue<>();
-		playerScore = adversaryScore = winningPositions(noCols)
-				* winningPositions(noRows) * 2 // DIAGONAL (UP AND DOWN)
-				+ noRows * winningPositions(noCols) // HORIZONTAL
-				+ noCols * winningPositions(noRows); // VERTICAL
+//		playerScore = adversaryScore = winningPositions(noCols)
+//				* winningPositions(noRows) * 2 // DIAGONAL (UP AND DOWN)
+//				+ noRows * winningPositions(noCols) // HORIZONTAL
+//				+ noCols * winningPositions(noRows); // VERTICAL
 	}
 
+	/**
+	 * returns the number of ways FOUR coins can 
+	 * be placed in an n size row or column
+	 * 
+	 * @param n
+	 * @return
+	 */
 	private int winningPositions(int n) {
 		return (n % FOUR) + 1;
 	}
 
+	/**
+	 * returns if the game has finished either by 
+	 * a draw, or MAX or MIN have won, or it was a tie.
+	 * Else it returns Winner.NOT_FINISHED (so the game will continue).
+	 */
 	public Winner gameFinished() {
-		// TODO Write your implementation for this method
 		int util = utility(board);
 		if (util == 1) {
 			return Winner.PLAYER1;
@@ -59,54 +89,76 @@ public class GameLogicKlaus implements IGameLogic {
 		return Winner.NOT_FINISHED;
 	}
 
+	/**
+	 * when a coin is placed, either by this instance or the adversary,
+	 * the coordinate is saved in an action which is put into the queue 
+	 * of the corresponding player.
+	 */
 	public void insertCoin(int column, int playerID) {
 		if (playerID != this.playerID) {
+			//if the player is not this instance, it must be the adversary
 			playerID = ADVERSARY;
 		}
-		// TODO Write your implementation for this method
+		
 		int[] col = board[column];
-		// [x, y] column, row
 		Action p = null;
-		// the column is non-empty
-		if (col[0] == 0) {
+		
+		if (col[0] == 0) {// the column is not full
 			boolean inserted = false;
 			for (int row = 0; row < col.length; row++) {
+				//if the element is not vacant, the prior one was vacant
 				if (col[row] != 0) {
-					col[row - 1] = playerID;
+					int newRow = row-1;
+					col[newRow] = playerID; //set the id to the board
 					inserted = true;
-					p = new Action(column, row - 1);
-					break;
+					p = new Action(column, newRow); //create the action
+					break; //no need to search more
 				}
 			}
-			// the column must be empty
+			// if the coin was not inserted, the column must have been empty
 			if (!inserted) {
+				//set the coin to the bottom element
 				col[col.length - 1] = playerID;
 				p = new Action(column, col.length - 1);
 				inserted = true;
 			}
-
+			//add the action to the queue
 			(playerID == this.playerID ? queueMAX : queueMIN).add(p);
 			if (trace)
 				printQueues();
+			
 			printBoard();
+			turns++;
 		} else {
 			print("you can't insert a coin here, because it is full!");
 		}
-		turns++;
 	}
 
+	/**
+	 * search for the "best" next move to take based on the current state of 
+	 * the game.
+	 * 
+	 * @param stat
+	 * @return
+	 */
 	private Action alpha_beta_search(int[][] stat) {
-		startTime = System.currentTimeMillis();
+		int[][] state = deepCopyIntMatrix(stat); //TODO maybe we don't need to deep copy the state here.
 
-		int[][] state = deepCopyIntMatrix(stat);
+		startTime = System.currentTimeMillis(); //start a timer for this turn
+		//initial variables for alpha-beta pruning
 		double alpha = Double.NEGATIVE_INFINITY;
 		double beta = Double.POSITIVE_INFINITY;
+		
+		int depth = 10; //TODO not used anymore
+		
 		double max = Double.NEGATIVE_INFINITY;
-		List<Action> actions = actions(state);
+		List<Action> actions = actions(state); //get a list of possible actions to take.
 		Action action = null;
+		//for each action, find out which of those actions will lead to the highest possible value.
 		for (Action a : actions) {
 			double value = min_value(result(state, a, this.playerID), alpha,
-					beta, 10);
+					beta, depth);
+			//if the value is higher than the current maximum, it must be a better action.
 			if (value > max) {
 				max = value;
 				action = a;
@@ -118,6 +170,14 @@ public class GameLogicKlaus implements IGameLogic {
 		return action;
 	}
 
+	/**
+	 * 
+	 * @param s
+	 * @param alpha
+	 * @param beta
+	 * @param depth
+	 * @return
+	 */
 	public double max_value(int[][] s, double alpha, double beta, int depth) {
 		int[][] state = deepCopyIntMatrix(s);
 		depth = depth-1;
