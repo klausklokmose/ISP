@@ -289,6 +289,7 @@ public class GameLogicKlaus implements IGameLogic {
 	 * 
 	 * @param s
 	 * @return
+
 	 */
 	public double NEWEVAL(int[][] s) {
 		int[][] state = deepCopyIntMatrix(s);
@@ -409,6 +410,7 @@ public class GameLogicKlaus implements IGameLogic {
 	private boolean validBounds(int colUp, int rowUp) {
 		return !(colUp < 0 || colUp > noCols - 1 || rowUp < 0 || rowUp > noRows - 1);
 	}
+
 
 	// public double EVAL(int[][] s) {
 	// int[][] state = deepCopyIntMatrix(s);
@@ -573,6 +575,17 @@ public class GameLogicKlaus implements IGameLogic {
 			System.out.println(pa);
 		}
 	}
+		/**
+		 * Check if there are 3 connected.  
+		 * @param state or action
+		 * @return action or something else
+		 */
+		private Action connectedCoins(int[][] state){
+			// check the sate
+			// if there are 3 connected
+				// return action that will give connected four
+			return null;
+		}
 
 	/**
 	 * finds the maximum number of connected nodes based on the given actions
