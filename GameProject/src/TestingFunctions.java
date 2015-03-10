@@ -58,6 +58,8 @@ public class TestingFunctions {
 		// { 1, 42, 1, 1 } };
 		// printBoard(board);
 		// System.out.println(utility(board) + " "+(utility(board)==-1));
+		System.out.println(Integer.MAX_VALUE);
+		System.out.println(Integer.MIN_VALUE);
 	}
 
 	/**
