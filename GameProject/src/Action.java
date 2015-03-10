@@ -31,10 +31,15 @@ public class Action implements Comparable<Action>{
 	 */
 	@Override
 	public int compareTo(Action o) {
-		
-		if(column == o.column){
-			return o.row - row;
+		int colDiff = Integer.compare(column, o.column);
+		if(colDiff == 0){
+			return Integer.compare(row, o.row);
 		}
-		return o.column - column;
+		return colDiff;
+	}
+
+	@Override
+	protected Object clone() {
+		return new Action(column, row);
 	}
 }
