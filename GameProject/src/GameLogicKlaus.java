@@ -87,7 +87,7 @@ public class GameLogicKlaus implements IGameLogic {
 	 */
 	public Winner gameFinished() {
 		int util = utility(board);
-		if (util == 1) {
+		if (util == Integer.MAX_VALUE) {
 			System.out.println("win");
 			printBoard();
 			if (this.playerID == 1) {
@@ -95,7 +95,7 @@ public class GameLogicKlaus implements IGameLogic {
 			} else {
 				return Winner.PLAYER2;
 			}
-		} else if (util == -1) {
+		} else if (util == Integer.MIN_VALUE) {
 			System.out.println("win");
 			printBoard();
 			if (this.playerID == 1) {
@@ -169,12 +169,13 @@ public class GameLogicKlaus implements IGameLogic {
 			tmp.add((Action) it.next().clone());
 		}
 
-//		findMaxConnectedCoins(tmp, true);
-//		if (killer_move != null) {
-//			System.out.println("killer move at " + killer_move);
-//			return killer_move.getColumn();
-//		}
-
+		/*//Broken
+		findMaxConnectedCoins(tmp, true);
+		if (killer_move != null) {
+			System.out.println("killer move at " + killer_move);
+			return killer_move.getColumn();
+		}
+		 */
 		Action a = alpha_beta_search(board, 15);
 		print("" + a);
 		int i = a.getColumn();
@@ -189,19 +190,17 @@ public class GameLogicKlaus implements IGameLogic {
 	 * @param stat
 	 * @return
 	 */
-	private Action alpha_beta_search(int[][] stat, int depth) {
-		int[][] state = deepCopyIntMatrix(stat); // TODO maybe we don't need to
-													// deep copy the state here.
+	private Action alpha_beta_search(int[][] state, int depth) {
 
 		startTime = System.currentTimeMillis(); // start a timer for this turn
 		// initial variables for alpha-beta pruning
-		double alpha = Double.NEGATIVE_INFINITY;
-		double beta = Double.POSITIVE_INFINITY;
+		double alpha = Integer.MIN_VALUE;
+		double beta = Integer.MAX_VALUE;
 
-		double max = Double.NEGATIVE_INFINITY;
+		double max = Integer.MIN_VALUE;
 		List<Action> actions = actions(state); // get a list of possible actions
 												// to take.
-		Collections.shuffle(actions);
+		//Collections.shuffle(actions);
 		Action action = null;
 		// for each action, find out which of those actions will lead to the
 		// highest possible value.
@@ -210,7 +209,7 @@ public class GameLogicKlaus implements IGameLogic {
 					beta, depth);
 			// if the value is higher than the current maximum, it must be a
 			// better action.
-			if (value > max) {
+			if (value >= max) {
 				max = value;
 				action = a;
 			}
@@ -232,23 +231,20 @@ public class GameLogicKlaus implements IGameLogic {
 	 * @param depth
 	 * @return
 	 */
-	public double max_value(int[][] s, double alpha, double beta, int depth) {
-		int[][] state = deepCopyIntMatrix(s);
+	public double max_value(int[][] state, double alpha, double beta, int depth) {
 		depth = depth - 1;
 		// if we have reached the limit
-		if (cutoff_test(state, depth))
+		if (cutoff_test(depth))
 			return NEWEVAL(state);
 
 		int utility = utility(state);
-		if (utility >= 0) {
-			if (utility == 1) {
-				return Integer.MAX_VALUE;
-			}
+		if(utility != -2){
 			return utility;
 		}
+		
 		List<Action> actions = actions(state); // possible actions from current
 												// state
-		double maximum = Double.NEGATIVE_INFINITY;
+		double maximum = Integer.MIN_VALUE;
 		for (Action a : actions) {
 			double minValue = min_value(result(state, a, ADVERSARY), alpha,
 					beta, depth);
@@ -271,25 +267,18 @@ public class GameLogicKlaus implements IGameLogic {
 	 * @param depth
 	 * @return
 	 */
-	public double min_value(int[][] s, double alpha, double beta, int depth) {
-		int[][] state = deepCopyIntMatrix(s);
+	public double min_value(int[][] state, double alpha, double beta, int depth) {
 		depth = depth - 1;
 		// if we have reached the limit
-		if (cutoff_test(state, depth))
+		if (cutoff_test(depth))
 			return NEWEVAL(state);
 		int utility = utility(state);
-		// if (utility >= 0) {
-		if (utility == 1) {
-			return Integer.MAX_VALUE;
-		} else if (utility == -1) {
+		if(utility != -2){
 			return utility;
-		} else if (utility == 0) {
-			return 0;
 		}
-		// }
 
 		List<Action> actions = actions(state);
-		double minimum = Double.POSITIVE_INFINITY;
+		double minimum = Integer.MAX_VALUE;
 		for (Action a : actions) {
 			double maxValue = max_value(result(state, a, this.playerID), alpha,
 					beta, depth);
@@ -309,7 +298,7 @@ public class GameLogicKlaus implements IGameLogic {
 	 * @param depth
 	 * @return
 	 */
-	private boolean cutoff_test(int[][] state, int depth) {
+	private boolean cutoff_test(int depth) {
 		long end = System.currentTimeMillis();
 		if ((end - startTime) >= 10_000) {
 			System.out.println("depth " + depth);
@@ -317,7 +306,7 @@ public class GameLogicKlaus implements IGameLogic {
 		}
 		if (depth == 0) {
 			// System.out.println("time to cutoff "+(end -
-			// startTime)/1000+" sec");
+			// startTime)/Integer.MAX_VALUE+" sec");
 			return true;
 		}
 		return false;
@@ -353,14 +342,10 @@ public class GameLogicKlaus implements IGameLogic {
 						min_barrier++;
 					}
 				}
-				if (max_barrier == FOUR) {
-					max_Possibilities++;
-					// return Integer.MAX_VALUE;
-				}
-				if (min_barrier == FOUR) {
-					min_Possibilities++;
-					// return Integer.MIN_VALUE;
-				}
+
+				max_Possibilities += weight(max_barrier);
+				min_Possibilities += weight(min_barrier);
+				
 			}
 
 			// DIAGONAL
@@ -420,26 +405,11 @@ public class GameLogicKlaus implements IGameLogic {
 					}
 
 				}
-				// If the barrier reached FOUR, then add to the total number of
-				// possibilities
-				if (isFour(max_down_barrier )) {
-					max_Possibilities++;
-//					return Integer.MAX_VALUE;
-				}
-				if (isFour(min_down_barrier )) {
-					min_Possibilities++;
-//					return Integer.MAX_VALUE;
-				}
-				// If the barrier reached FOUR, then add to the total number of
-				// possibilities
-				if (isFour(max_up_barrier)) {
-					max_Possibilities++;
-//					return Integer.MAX_VALUE;
-				}
-				if (isFour(min_up_barrier)) {
-					min_Possibilities++;
-//					return Integer.MAX_VALUE;
-				}
+				max_Possibilities += weight(max_down_barrier);
+				min_Possibilities += weight(min_down_barrier);
+				max_Possibilities += weight(max_up_barrier);
+				min_Possibilities += weight(min_up_barrier);
+				
 			}
 
 		} // END COL LOOP
@@ -459,13 +429,10 @@ public class GameLogicKlaus implements IGameLogic {
 						min_barrier++;
 					}
 				}
-				if (isFour(max_barrier)) {
-					max_Possibilities++;
-//					return Integer.MAX_VALUE;
-				}
-				if(isFour(min_barrier)){
-					min_Possibilities++;
-				}
+				
+				max_Possibilities += weight(max_barrier);
+				min_Possibilities += weight(min_barrier);
+				
 			}
 		}
 		return max_Possibilities-min_Possibilities;
@@ -531,8 +498,7 @@ public class GameLogicKlaus implements IGameLogic {
 	 * @return -2 if game has not ended, 1 if this instance won, -1 if the
 	 *         adversary won, 0 if the game has finished with a tie.
 	 */
-	public int utility(int[][] s) {
-		int[][] state = s;
+	public int utility(int[][] state) {
 
 		// find all the actions taken by this instance and the adversary on the
 		// given state.
@@ -556,12 +522,12 @@ public class GameLogicKlaus implements IGameLogic {
 		int maxPlayer2 = findMaxConnectedCoins(player2queue, false);
 
 		if (maxAIcoins == FOUR) {
-			return 1;
+			return Integer.MAX_VALUE;
 		}
 		if (maxPlayer2 == FOUR) {
-			return -1;
+			return Integer.MIN_VALUE;
 		}
-		if ((oneSize + twoSize) == (s.length * s[0].length)) {
+		if ((oneSize + twoSize) == (state.length * state[0].length)) {
 			return 0;
 		}
 		return -2; // game not ended
@@ -573,8 +539,7 @@ public class GameLogicKlaus implements IGameLogic {
 	 * @param state
 	 * @return as list of possible actions on the given state.
 	 */
-	public static List<Action> actions(int[][] state) {
-		int[][] s = deepCopyIntMatrix(state);
+	public static List<Action> actions(int[][] s) {
 		List<Action> actions = new ArrayList<Action>();
 
 		for (int column = 0; column < s.length; column++) {
@@ -652,8 +617,10 @@ public class GameLogicKlaus implements IGameLogic {
 		}
 	}
 
-	private boolean isFour(int count) {
-		return count == FOUR;
+	private int weight(int count) {
+		// If the barrier reached FOUR, then add the specified weight
+		return 	count == FOUR ? Integer.MAX_VALUE :
+				count == 3 ? 100 : 0;
 	}
 
 	/**
@@ -757,7 +724,7 @@ public class GameLogicKlaus implements IGameLogic {
 				h_lastColumn[r] = -1;
 				h_counter[r] = 0;
 			}
-			if (isFour(h_counter[r])) {
+			if (h_counter[r] == FOUR) {
 				// print("found 4 coins!! HORIZONTAL in row " + r);
 				// System.out.println("HORIZONTAL WIN on row " + r);
 				return FOUR;
