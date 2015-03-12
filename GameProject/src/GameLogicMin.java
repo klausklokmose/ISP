@@ -123,21 +123,12 @@ public class GameLogicMin implements IGameLogic {
 	 * @return
 	 */
 	private Action alpha_beta_search(int[][] stat) {
-		double 
-		
-		
-		
-		
-		
-		
-		
-		
 		System.out.println("start alpha-beta");
 		int[][] state = deepCopyIntMatrix(stat);
 		double alpha = Double.MIN_VALUE;
 		double beta = Double.MAX_VALUE;
 		double max =Double.MIN_VALUE;
-		int depth = 7;
+		int depth = 9;
 		// System.out.println("maxdouble " + max);
 		List<Action> actions = actions(state); // get a list of possible actions
 		Action action = null;
@@ -412,6 +403,7 @@ public class GameLogicMin implements IGameLogic {
 				// vertical
 				if (j + 3 < state[i].length) {
 					if (state[i][j] == playerID) {
+						adversaryOneConnected++;
 						oneConnected++;
 						if (state[i][j + 1] == playerID) {
 							twoConnected++;
@@ -429,6 +421,7 @@ public class GameLogicMin implements IGameLogic {
 				if (i + 3 < state.length) {
 					if (state[i][j] == playerID) {
 						oneConnected++;
+						adversaryOneConnected++;
 						if (state[i + 1][j] == playerID) {
 							twoConnected++;
 							if (state[i + 2][j] == playerID) {
