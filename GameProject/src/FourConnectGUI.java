@@ -191,7 +191,7 @@ public class FourConnectGUI extends JComponent implements MouseListener
 	}
 	repaint();
 	
-	mouseClicked(e);
+//	mouseClicked(e);
     }
 		
     // Not used methods from the interface of MouseListener 

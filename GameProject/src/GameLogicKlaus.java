@@ -1,6 +1,5 @@
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.PriorityQueue;
 
@@ -13,12 +12,13 @@ public class GameLogicKlaus implements IGameLogic {
 	private int turns;
 
 	// holds the number of connected that the game needs.
-	private final int FOUR = 4;
+	private static final int FOUR = 4;
+	private static final int NOT_FOUND = -2;
 
 	// player ids. The adversary is not 1 or 2, because we don't know if the ID
 	// this instance will get is 1 or 2.
 	private int playerID;
-	private final int ADVERSARY = 42;
+	private int ADVERSARY = 42;
 	// public int playerScore;
 	// public int adversaryScore;
 
@@ -34,6 +34,7 @@ public class GameLogicKlaus implements IGameLogic {
 	private long startTime;
 
 	private Action killer_move = null;
+	private static final int IRRELEVANT = 0;
 
 	public GameLogicKlaus() {
 		// TODO Write your implementation for this method
@@ -55,6 +56,7 @@ public class GameLogicKlaus implements IGameLogic {
 	 * 
 	 */
 	public void initializeGame(int noCols, int noRows, int playerID) {
+		ADVERSARY = (playerID == 1) ? 2 : 1;
 		this.noCols = noCols;
 		this.noRows = noRows;
 		print(noCols + ", " + noRows);
@@ -171,8 +173,17 @@ public class GameLogicKlaus implements IGameLogic {
 			System.out.println("killer move at " + killer_move);
 			return killer_move.getColumn();
 		}
+		PriorityQueue<Action> tmp2 = Action.cloneQueue(queueMIN);
+		
+		findMaxConnectedCoins(tmp2, true);
+		if(killer_move != null){
+			System.out.println("prevented killer move of adversary at "+killer_move);
+			int move = killer_move.getColumn();
+			killer_move = null;
+			return move;
+		}
 
-		Action a = alpha_beta_search(board, 15);
+		Action a = alpha_beta_search(board, 6);
 		print("" + a);
 		int i = a.getColumn();
 		print("try column: " + i);
@@ -661,8 +672,7 @@ public class GameLogicKlaus implements IGameLogic {
 	 *            a sorted array (column ascending, row descending)
 	 * @return 1 if 4 coins are connected, otherwise -2
 	 */
-	private int findMaxConnectedCoins(PriorityQueue<Action> actions,
-			boolean findKillerMove) {
+	private int findMaxConnectedCoins(PriorityQueue<Action> actions, boolean findKillerMove) {
 		PriorityQueue<Action> consistenQueue = Action.cloneQueue(actions);
 		// the higher the maxConnected is, the more connected coins there are
 		int maxConnected = 0;
@@ -674,40 +684,64 @@ public class GameLogicKlaus implements IGameLogic {
 			int c = action.getColumn();
 
 			// VERTICAL
-			int v_barrier = 1; //now we have at least one out of four connected
-			Action[] vertical = new Action[] { new Action(c, r + 1),
-					new Action(c, r + 2), new Action(c, r + 3) };
+			int vertical_barrier = 1; //now we have at least one out of four connected
+			Action[] vertical = new Action[] { new Action(c, r - 1), new Action(c, r - 2), new Action(c, r - 3) };
 			for (int j = 0; j < vertical.length; j++) {
 				Action actio = vertical[j];
 				int player = (consistenQueue.contains(actio)) ? 1 : 0;
 				if(player == 1){
-					v_barrier++;
+					vertical_barrier++;
+				}else if(!findKillerMove){
+					vertical_barrier = 0;
 				}
 			}
-			if(v_barrier > maxConnected){
-				maxConnected = v_barrier;
+			if(vertical_barrier > maxConnected){
+				maxConnected = vertical_barrier;
 			}
-			if(v_barrier == FOUR){
+			if(vertical_barrier == FOUR){
 				return FOUR;
+			}
+			
+			if(findKillerMove && vertical_barrier == 3){
+				int column = vertical[2].getColumn();
+				int row = vertical[2].getRow();
+				if(validBounds(column, row) && board[column][row] == 0){
+					this.killer_move = new Action(column, IRRELEVANT);
+					return 0;
+				}
 			}
 			
 			//HORIZONTAL
 			Action[] horizontal = new Action[] { new Action(c + 1, r), new Action(c + 2, r), new Action(c + 3, r) };
-			int h_barrier = 1;
+			int horizontal_barrier = 1;
+			int missing_horizontal_index = NOT_FOUND;
 			for (int k = 0; k < horizontal.length; k++) {
 				Action actio = horizontal[k];
+				int column = actio.getColumn();
+				int row = actio.getRow();
 				int player = (consistenQueue.contains(actio)) ? 1 : 0;
 				if(player == 1){
-					h_barrier++;
+					horizontal_barrier++;
+				}else if(!findKillerMove){
+					horizontal_barrier = 0;
+				}else{
+					if(validBounds(column, row) && board[column][row] == 0){
+						missing_horizontal_index = actio.getColumn(); 
+					}
 				}
+					
 			}
-			if(h_barrier > maxConnected){
-				maxConnected = h_barrier;
+			if(horizontal_barrier > maxConnected){
+				maxConnected = horizontal_barrier;
 			}
-			if(h_barrier == FOUR){
+			if(horizontal_barrier == FOUR){
 				return FOUR;
 			}
 
+			if(findKillerMove && horizontal_barrier == 3 && missing_horizontal_index != NOT_FOUND){
+				killer_move = new Action(missing_horizontal_index, IRRELEVANT);
+				return 0;
+			}
 			// DIAGONAL running time = noPairs*4
 			Action[] diagonal_up = new Action[] { new Action(c + 1, r - 1),
 					new Action(c + 2, r - 2), new Action(c + 3, r - 3) };
