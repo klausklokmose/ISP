@@ -31,10 +31,8 @@ public class GameLogicKlaus implements IGameLogic {
 	private boolean trace = false;
 
 	// overridden each time a turn has to be taken by this instance.
-	private long startTime;
 
-	private Action killer_move = null;
-	private static final int IRRELEVANT = 0;
+	private static int DEPTH = 8;
 
 	public GameLogicKlaus() {
 		// TODO Write your implementation for this method
@@ -56,7 +54,6 @@ public class GameLogicKlaus implements IGameLogic {
 	 * 
 	 */
 	public void initializeGame(int noCols, int noRows, int playerID) {
-		ADVERSARY = (playerID == 1) ? 2 : 1;
 		this.noCols = noCols;
 		this.noRows = noRows;
 		print(noCols + ", " + noRows);
@@ -165,28 +162,50 @@ public class GameLogicKlaus implements IGameLogic {
 	public int decideNextMove() {
 		// TODO Write your implementation for this method
 		// TODO call search
+		long startTime = System.currentTimeMillis(); // start a timer for this
+														// turn
 		printBoard();
-		PriorityQueue<Action> tmp = Action.cloneQueue(queueMAX);
-
-		findMaxConnectedCoins(tmp, true);
-		if (killer_move != null) {
-			System.out.println("killer move at " + killer_move);
-			return killer_move.getColumn();
+		if (turns == 0) {
+			return noCols / 2;
 		}
-		PriorityQueue<Action> tmp2 = Action.cloneQueue(queueMIN);
-		
-		findMaxConnectedCoins(tmp2, true);
-		if(killer_move != null){
-			System.out.println("prevented killer move of adversary at "+killer_move);
-			int move = killer_move.getColumn();
-			killer_move = null;
-			return move;
-		}
+//		PriorityQueue<Action> tmp = Action.cloneQueue(queueMAX);
+//
+//		findMaxConnectedCoins(tmp, true);
+//		if (killer_move != null) {
+//			System.out.println("killer move at " + killer_move);
+//			return killer_move.getColumn();
+//		}
+//		PriorityQueue<Action> tmp2 = Action.cloneQueue(queueMIN);
+//
+//		findMaxConnectedCoins(tmp2, true);
+//		if (killer_move != null) {
+//			System.out.println("prevented killer move of adversary at "
+//					+ killer_move);
+//			int move = killer_move.getColumn();
+//			killer_move = null;
+//			return move;
+//		}
 
-		Action a = alpha_beta_search(board, 6);
+		Action a = alpha_beta_search(board, DEPTH);
 		print("" + a);
 		int i = a.getColumn();
 		print("try column: " + i);
+
+		// UPDATE DEPTH
+		if(turns > 7){
+		long timeForLastTurn = (long) (System.currentTimeMillis() - startTime);
+//		System.out.println(timeForLastTurn);
+		if (timeForLastTurn > 10_000) {
+			// time is lower than 10 sec
+			DEPTH -= 1;
+		}
+		if (timeForLastTurn < 3_000) {
+			// time is higher than 10 sec
+			DEPTH += 2;
+		}
+		System.out.println("new depth = " + DEPTH + ". Time for last turn = "
+				+ (double) timeForLastTurn/1000 + " sec");
+		}
 		return i;
 	}
 
@@ -201,7 +220,6 @@ public class GameLogicKlaus implements IGameLogic {
 		int[][] state = deepCopyIntMatrix(stat); // TODO maybe we don't need to
 													// deep copy the state here.
 
-		startTime = System.currentTimeMillis(); // start a timer for this turn
 		// initial variables for alpha-beta pruning
 		double alpha = Double.NEGATIVE_INFINITY;
 		double beta = Double.POSITIVE_INFINITY;
@@ -214,6 +232,12 @@ public class GameLogicKlaus implements IGameLogic {
 		// for each action, find out which of those actions will lead to the
 		// highest possible value.
 		for (Action a : actions) {
+			if(utility(result(state, a, this.playerID)) == 1){
+				return a;
+			}
+			if(utility(result(state, a, ADVERSARY)) == -1){
+				return a;
+			}
 			double value = min_value(result(state, a, this.playerID), alpha,
 					beta, depth);
 			// if the value is higher than the current maximum, it must be a
@@ -240,12 +264,12 @@ public class GameLogicKlaus implements IGameLogic {
 	 * @param depth
 	 * @return
 	 */
-	public double max_value(int[][] s, double alpha, double beta, int depth) {
-		int[][] state = deepCopyIntMatrix(s);
+	public double max_value(int[][] state, double alpha, double beta, int depth) {
+		// int[][] state = deepCopyIntMatrix(s);
 		depth = depth - 1;
 		// if we have reached the limit
 		if (cutoff_test(state, depth))
-			return NEWEVAL(state);
+			return EVAL(state);
 
 		int utility = utility(state);
 		if (utility == 1) {
@@ -280,12 +304,12 @@ public class GameLogicKlaus implements IGameLogic {
 	 * @param depth
 	 * @return
 	 */
-	public double min_value(int[][] s, double alpha, double beta, int depth) {
-		int[][] state = deepCopyIntMatrix(s);
+	public double min_value(int[][] state, double alpha, double beta, int depth) {
+		// int[][] state = deepCopyIntMatrix(s);
 		depth = depth - 1;
 		// if we have reached the limit
 		if (cutoff_test(state, depth))
-			return NEWEVAL(state);
+			return EVAL(state);
 		int utility = utility(state);
 		// if (utility >= 0) {
 		if (utility == 1) {
@@ -319,11 +343,6 @@ public class GameLogicKlaus implements IGameLogic {
 	 * @return
 	 */
 	private boolean cutoff_test(int[][] state, int depth) {
-		long end = System.currentTimeMillis();
-		if ((end - startTime) >= 10_000) {
-			System.out.println("depth " + depth);
-			return true;
-		}
 		if (depth == 0) {
 			// System.out.println("time to cutoff "+(end -
 			// startTime)/1000+" sec");
@@ -339,7 +358,7 @@ public class GameLogicKlaus implements IGameLogic {
 	 * @param s
 	 * @return
 	 */
-	public double NEWEVAL(final int[][] state) {
+	public double EVAL(final int[][] state) {
 		int max_Possibilities = 0;
 		int min_Possibilities = 0;
 		// number of possibilities to place 4 coins horizontally (in one column)
@@ -431,23 +450,23 @@ public class GameLogicKlaus implements IGameLogic {
 				}
 				// If the barrier reached FOUR, then add to the total number of
 				// possibilities
-				if (isFour(max_down_barrier )) {
+				if (isFour(max_down_barrier)) {
 					max_Possibilities++;
-//					return Integer.MAX_VALUE;
+					// return Integer.MAX_VALUE;
 				}
-				if (isFour(min_down_barrier )) {
+				if (isFour(min_down_barrier)) {
 					min_Possibilities++;
-//					return Integer.MAX_VALUE;
+					// return Integer.MAX_VALUE;
 				}
 				// If the barrier reached FOUR, then add to the total number of
 				// possibilities
 				if (isFour(max_up_barrier)) {
 					max_Possibilities++;
-//					return Integer.MAX_VALUE;
+					// return Integer.MAX_VALUE;
 				}
 				if (isFour(min_up_barrier)) {
 					min_Possibilities++;
-//					return Integer.MAX_VALUE;
+					// return Integer.MAX_VALUE;
 				}
 			}
 
@@ -460,24 +479,25 @@ public class GameLogicKlaus implements IGameLogic {
 				int max_barrier = 0;
 				int min_barrier = 0;
 				for (int j = i; j < FOUR + i; j++) {
-					int player = state[j][r] ;
+					int player = state[j][r];
 					if (isThisPlayerOrVacant(player)) {
 						max_barrier++;
 					}
-					if(isAdversaryOrVacant(player)){
+					if (isAdversaryOrVacant(player)) {
 						min_barrier++;
 					}
 				}
 				if (isFour(max_barrier)) {
 					max_Possibilities++;
-//					return Integer.MAX_VALUE;
+					// return Integer.MAX_VALUE;
 				}
-				if(isFour(min_barrier)){
+				if (isFour(min_barrier)) {
 					min_Possibilities++;
 				}
 			}
 		}
-		return max_Possibilities-min_Possibilities;
+		// the evaluation
+		return max_Possibilities - min_Possibilities;
 	}
 
 	private boolean isAdversaryOrVacant(int player) {
@@ -499,23 +519,6 @@ public class GameLogicKlaus implements IGameLogic {
 	private boolean validBounds(int colUp, int rowUp) {
 		return !(colUp < 0 || colUp > noCols - 1 || rowUp < 0 || rowUp > noRows - 1);
 	}
-
-	// public double EVAL(int[][] s) {
-	// int[][] state = deepCopyIntMatrix(s);
-	// // find all actions that MAX has taken
-	// PriorityQueue<Action> pairs = new PriorityQueue<>();
-	// for (int col = 0; col < state.length; col++) {
-	// for (int row = 0; row < state[col].length; row++) {
-	// if (state[col][row] == this.playerID) {
-	// pairs.add(new Action(col, row));
-	// }
-	// }
-	// }
-	//
-	// int maxConnectedNodes = findMatch(pairs
-	// .toArray(new Action[pairs.size()]));
-	// return maxConnectedNodes / 4;
-	// }
 
 	/**
 	 * result function returns a new state of applying an action to the state.
@@ -561,8 +564,8 @@ public class GameLogicKlaus implements IGameLogic {
 		int oneSize = player1queue.size();
 		int twoSize = player2queue.size();
 		// find the maximum connected nodes each player has.
-		int maxAIcoins = findMaxConnectedCoins(player1queue, false);
-		int maxPlayer2 = findMaxConnectedCoins(player2queue, false);
+		int maxAIcoins = findMaxConnectedCoins(player1queue);
+		int maxPlayer2 = findMaxConnectedCoins(player2queue);
 
 		if (maxAIcoins == FOUR) {
 			return 1;
@@ -672,7 +675,7 @@ public class GameLogicKlaus implements IGameLogic {
 	 *            a sorted array (column ascending, row descending)
 	 * @return 1 if 4 coins are connected, otherwise -2
 	 */
-	private int findMaxConnectedCoins(PriorityQueue<Action> actions, boolean findKillerMove) {
+	private int findMaxConnectedCoins(PriorityQueue<Action> actions) {
 		PriorityQueue<Action> consistenQueue = Action.cloneQueue(actions);
 		// the higher the maxConnected is, the more connected coins there are
 		int maxConnected = 0;
@@ -683,65 +686,60 @@ public class GameLogicKlaus implements IGameLogic {
 			int r = action.getRow();
 			int c = action.getColumn();
 
-			// VERTICAL
-			int vertical_barrier = 1; //now we have at least one out of four connected
-			Action[] vertical = new Action[] { new Action(c, r - 1), new Action(c, r - 2), new Action(c, r - 3) };
+			/**
+			 * HORIZONTAL checks for max number of connected coins upwards. 
+			 */
+			int vertical_barrier = 1; // now we have at least one out of four
+										// connected
+			Action[] vertical = new Action[] { new Action(c, r - 1),
+					new Action(c, r - 2), new Action(c, r - 3) };
 			for (int j = 0; j < vertical.length; j++) {
 				Action actio = vertical[j];
 				int player = (consistenQueue.contains(actio)) ? 1 : 0;
-				if(player == 1){
+				if (player == 1) {
 					vertical_barrier++;
-				}else if(!findKillerMove){
+				} else {
 					vertical_barrier = 0;
 				}
 			}
-			if(vertical_barrier > maxConnected){
+			if (vertical_barrier > maxConnected) {
 				maxConnected = vertical_barrier;
 			}
-			if(vertical_barrier == FOUR){
-				return FOUR;
-			}
-			
-			if(findKillerMove && vertical_barrier == 3){
-				int column = vertical[2].getColumn();
-				int row = vertical[2].getRow();
-				if(validBounds(column, row) && board[column][row] == 0){
-					this.killer_move = new Action(column, IRRELEVANT);
-					return 0;
-				}
-			}
-			
-			//HORIZONTAL
-			Action[] horizontal = new Action[] { new Action(c + 1, r), new Action(c + 2, r), new Action(c + 3, r) };
-			int horizontal_barrier = 1;
-			int missing_horizontal_index = NOT_FOUND;
-			for (int k = 0; k < horizontal.length; k++) {
-				Action actio = horizontal[k];
-				int column = actio.getColumn();
-				int row = actio.getRow();
-				int player = (consistenQueue.contains(actio)) ? 1 : 0;
-				if(player == 1){
-					horizontal_barrier++;
-				}else if(!findKillerMove){
-					horizontal_barrier = 0;
-				}else{
-					if(validBounds(column, row) && board[column][row] == 0){
-						missing_horizontal_index = actio.getColumn(); 
-					}
-				}
-					
-			}
-			if(horizontal_barrier > maxConnected){
-				maxConnected = horizontal_barrier;
-			}
-			if(horizontal_barrier == FOUR){
+			if (vertical_barrier == FOUR) {
 				return FOUR;
 			}
 
-			if(findKillerMove && horizontal_barrier == 3 && missing_horizontal_index != NOT_FOUND){
-				killer_move = new Action(missing_horizontal_index, IRRELEVANT);
-				return 0;
+			/**
+			 * HORIZONTAL checks for max number of connected coins to the right. 
+			 * 
+			 */
+			Action[] horizontal_right = new Action[] { new Action(c + 1, r),
+					new Action(c + 2, r), new Action(c + 3, r) };
+			int horizontal_barrier = 1;
+			for (int k = 0; k < horizontal_right.length; k++) {
+				Action actio_right = horizontal_right[k];
+				int player_right = (consistenQueue.contains(actio_right)) ? 1
+						: 0;
+				if (player_right == 1) {
+					horizontal_barrier++;
+				} else {
+					horizontal_barrier = 0;
+				}
+				
+
 			}
+			// if there was a win, then return it
+			if (horizontal_barrier == FOUR) {
+				return FOUR;
+			}
+			// set the max connected if it is bigger
+			if (horizontal_barrier > maxConnected) {
+				maxConnected = horizontal_barrier;
+			}
+			/**
+			 * check if there is a killer move and if it is valid
+			 */
+			
 			// DIAGONAL running time = noPairs*4
 			Action[] diagonal_up = new Action[] { new Action(c + 1, r - 1),
 					new Action(c + 2, r - 2), new Action(c + 3, r - 3) };
@@ -790,73 +788,9 @@ public class GameLogicKlaus implements IGameLogic {
 			}
 
 			// KILLER DIAGONAL MOVE
-			if (findKillerMove && upDiagonalBarrier == 3) {
-				if (validBounds(c + 3, r - 3)) {
-					if (board[c + 3][r - 3] == 0 && board[c + 3][r - 2] != 0) {
-						killer_move = new Action(c + 3, r - 3);
-						return 0; // nothing, because we know that it will win
-									// the game
-					}
-				}
-			}
 
 		}// END LOOP THROUGH
-		
-		// HORIZONTAL
-		for (Action a : actions) {
-			int c = a.getColumn();
-			int r = a.getRow();
-			
-			
-//					if (h_lastColumn[r] == -1) {
-//						// print("inital h_how at row=" + r);
-//						h_lastColumn[r] = c;
-//						// h_counter[r]++;
-//					}
-//
-//					int h_diff = Math.abs(h_lastColumn[r] - c);
-//					if (h_diff == 1 || h_diff == 0) {
-//						h_lastColumn[r] = c;
-//						h_counter[r] = h_counter[r] + 1;
-//						// System.out.println(action + " counter is: " + h_counter[r]);
-//					} else { // reset
-//						if (maxConnected < h_counter[r]) {
-//							maxConnected = h_counter[r];
-//							// System.out.println("HORIZONTAL: "+maxConnected);
-//						}
-//						// System.out.println("reset h counter at " + action);
-//						h_lastColumn[r] = -1;
-//						h_counter[r] = 0;
-//					}
-//					if (isFour(h_counter[r])) {
-//						// print("found 4 coins!! HORIZONTAL in row " + r);
-//						// System.out.println("HORIZONTAL WIN on row " + r);
-//						return FOUR;
-//					} else if (maxConnected < h_counter[r]) {
-//						maxConnected = h_counter[r];
-//						// System.out.println("HORIZONTAL: "+maxConnected);
-//					}
-//
-//					// KILLER HORIZONTAL
-//					if (findKillerMove && h_counter[r] == 3) {
-//						if (validBounds(c + 1, r)) {
-//							if (board[c + 1][r] == 0) {
-//								if (isACoinDiagonalDownOrOutOfBoard(c, r)) {
-//									killer_move = new Action(c + 1, r);
-//									return 0; // nothing, because we know that it will
-//												// win the game
-//								}
-//							}
-//						}
-//					}
-		}
-
 		return maxConnected;
-	}
-
-	private boolean isACoinDiagonalDownOrOutOfBoard(int c, int r) {
-		return (validBounds(c + 1, r + 1) && board[c + 1][r + 1] != 0)
-				|| (c + 1 >= 0 || c + 1 < noCols || r > 0 || r < noRows);
 	}
 
 	public static int[][] deepCopyIntMatrix(int[][] input) {
