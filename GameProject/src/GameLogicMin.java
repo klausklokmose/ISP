@@ -42,6 +42,7 @@ public class GameLogicMin implements IGameLogic {
 	 */
 	public Winner gameFinished() {
 		int util = playerWon(board);
+		System.out.println("Player status " + util);
 		if (util == 1) {
 			if (playerID == 1) {
 				return Winner.PLAYER1;
@@ -107,6 +108,7 @@ public class GameLogicMin implements IGameLogic {
 		if (a != null) {
 			i = a.getColumn();
 			System.out.println("column " + i);
+			System.out.println("row " + a.getRow());
 		} else {
 			System.out.println("Action is null");
 		}
@@ -121,24 +123,37 @@ public class GameLogicMin implements IGameLogic {
 	 * @return
 	 */
 	private Action alpha_beta_search(int[][] stat) {
+		double 
+		
+		
+		
+		
+		
+		
+		
+		
 		System.out.println("start alpha-beta");
 		int[][] state = deepCopyIntMatrix(stat);
 		double alpha = Double.MIN_VALUE;
 		double beta = Double.MAX_VALUE;
-		double max = Double.MIN_VALUE;
-		int depth = 13;
+		double max =Double.MIN_VALUE;
+		int depth = 7;
 		// System.out.println("maxdouble " + max);
-
 		List<Action> actions = actions(state); // get a list of possible actions
 		Action action = null;
-		for (Action a : actions) {// for each action, find out which of those
-									// actions will lead to the highest possible
-									// value.
-			double value = min_value(result(state, a, adversary), alpha, beta,
-					depth);
-			System.out.println("value " + value);
+		for (Action a : actions) {
+			if(playerWon(result(state,a, playerID))== 1){ // killer move
+				return a;
+			}
+			if(playerWon(result(state, a, adversary))==-1){ //block opponents killer move 
+				return a;
+			}
+			double value = min_value(result(state, a, adversary), alpha, beta, depth);
+			System.out.println("value " + value + " column " + a.getColumn() + " row " + a.getRow());
+
 			if (value > max) {// if the value is higher than the current maximum
 				max = value;
+				System.out.println("Selected value: " + max);
 				action = a;// it must be a better action.
 			}
 		}
@@ -159,18 +174,19 @@ public class GameLogicMin implements IGameLogic {
 	public double max_value(int[][] s, double alpha, double beta, int depth) {
 		int[][] state = deepCopyIntMatrix(s);
 		depth = depth - 1;
-		if (depth == 0)// if we have reached the limit
-			return connected(state, playerID);
 		int utility = playerWon(state);
-		if (utility == 1 || utility == -1) {
+		if (utility == 1 || utility == -1 || utility == 0) {
 			return utility;
 		}
+		if (depth <= 0)// if we have reached the limit
+			return connected(state, playerID, adversary);
+		
 		List<Action> actions = actions(state); // possible actions from current
-		double maximum = Double.NEGATIVE_INFINITY;
+		double maximum = Double.MIN_VALUE;
 		for (Action a : actions) {
-			double value = min_value(result(state, a, adversary), alpha, beta,
-					depth);
+			double value = min_value(result(state, a, adversary), alpha, beta, depth);
 			maximum = Math.max(maximum, value);
+			
 			if (maximum >= beta)
 				return maximum;
 			alpha = Math.max(alpha, maximum);
@@ -192,24 +208,22 @@ public class GameLogicMin implements IGameLogic {
 	public double min_value(int[][] s, double alpha, double beta, int depth) {
 		int[][] state = deepCopyIntMatrix(s);
 		depth = depth - 1;
-		if (depth == 0)// if we have reached the limit
-			return connected(state, adversary);
 		int utility = playerWon(state);
-		if (utility == 1 || utility == -1) {
+		if (utility == 1 || utility == -1 || utility == 0) {
 			return utility;
 		}
-
+		if (depth <= 0)// if we have reached the limit
+			return connected(state, adversary, playerID);
+		
 		List<Action> actions = actions(state);
-		double minimum = Double.POSITIVE_INFINITY;
+		double minimum = Double.MAX_VALUE;
 		for (Action a : actions) {
-			double value = max_value(result(state, a, playerID), alpha, beta,
-					depth);
+			double value = max_value(result(state, a, playerID), alpha, beta, depth);
 			minimum = Math.min(minimum, value);
 			if (minimum <= alpha)
 				return minimum;
 			beta = Math.min(beta, minimum);
 		}
-
 		return minimum;
 	}
 
@@ -234,15 +248,15 @@ public class GameLogicMin implements IGameLogic {
 	 * @param state
 	 * @return as list of possible actions on the given state.
 	 */
-	public static List<Action> actions(int[][] state) {
-		int[][] s = deepCopyIntMatrix(state);
+	public static List<Action> actions(int[][] s) {
+		int[][] state = deepCopyIntMatrix(s);
 		List<Action> actions = new ArrayList<Action>();
 
-		for (int column = 0; column < s.length; column++) {
-			if (isColumnNotFull(s, column)) {
+		for (int column = 0; column < state.length; column++) {
+			if (isColumnNotFull(state, column)) { // if column is not full
 				Action p = null;
-				for (int row = 0; row < s[column].length; row++) {
-					if (hasCoin(s, column, row)) {
+				for (int row = 0; row < state[column].length; row++) {
+					if (hasCoin(state, column, row)) {
 						// add the prior row action
 						p = new Action(column, row - 1);
 						break;
@@ -251,7 +265,7 @@ public class GameLogicMin implements IGameLogic {
 				// if column is empty
 				if (p == null) {
 					// add this action
-					int lastItemInRow = s[column].length - 1;
+					int lastItemInRow = state[column].length - 1;
 					p = new Action(column, lastItemInRow);
 				}
 				actions.add(p);
@@ -265,24 +279,24 @@ public class GameLogicMin implements IGameLogic {
 	/**
 	 * 
 	 * 
-	 * @param s
+	 * @param state
 	 * @param column
 	 * @param row
 	 * @return if the given coordinate has a coin.
 	 */
-	private static boolean hasCoin(int[][] s, int column, int row) {
-		return s[column][row] != 0;
+	private static boolean hasCoin(int[][] state, int column, int row) {
+		return state[column][row] != 0;
 	}
 
 	/**
 	 * check if the given column is full
 	 * 
-	 * @param s
+	 * @param state
 	 * @param column
 	 * @return
 	 */
-	private static boolean isColumnNotFull(int[][] s, int column) {
-		return s[column][0] == 0;
+	private static boolean isColumnNotFull(int[][] state, int column) {
+		return state[column][0] == 0;
 	}
 
 	/**
@@ -299,44 +313,13 @@ public class GameLogicMin implements IGameLogic {
 		}
 	}
 
-	public Action findThreeConnectedHorizontal(int[][] state, int playerID) {
-		for (int i = 0; i < state.length; i++) {
-			for (int j = 0; j < state[i].length; j++) {
-				// horizontal 3 connected
-				if (i + 2 < state.length) {
-					if (state[i][j] == playerID && state[i + 1][j] == playerID
-							&& state[i + 2][j] == playerID) {
-						return new Action(i + 3, j);
-					}
-				}
-			}
-		}
-		return null;
-	}
-
-	public Action findThreeConnectedVertical(int[][] state) {
-		for (int i = 0; i < state.length; i++) {
-			for (int j = 0; j < state[i].length; j++) {
-				// vertical win
-				if (j + 2 < state.length) {
-					if (state[i][j] == playerID && state[i][j + 1] == playerID
-							&& state[i][j + 2] == playerID) {
-						return new Action(i, j + 3);
-					}
-				}
-			}
-
-		}
-		return null;
-	}
-
 	public int playerWon(int[][] state) {
+		int possibleColumns = state.length;
 		for (int i = 0; i < state.length; i++) {
 			for (int j = 0; j < state[i].length; j++) {
 				// vertical win
 				if (j + 3 < state[i].length) {
-					if (state[i][j] == playerID && state[i][j + 1] == playerID
-							&& state[i][j + 2] == playerID
+					if (state[i][j] == playerID && state[i][j + 1] == playerID && state[i][j + 2] == playerID
 							&& state[i][j + 3] == playerID) {
 						return 1;
 					}
@@ -344,8 +327,7 @@ public class GameLogicMin implements IGameLogic {
 
 				// horizontal win
 				if (i + 3 < state.length) {
-					if (state[i][j] == playerID && state[i + 1][j] == playerID
-							&& state[i + 2][j] == playerID
+					if (state[i][j] == playerID && state[i + 1][j] == playerID && state[i + 2][j] == playerID
 							&& state[i + 3][j] == playerID) {
 						return 1;
 					}
@@ -353,26 +335,20 @@ public class GameLogicMin implements IGameLogic {
 
 				// diagonal down win
 				if (i + 3 < state.length && j + 3 < state[i].length) {
-					if ((state[i][j] == playerID
-							&& state[i + 1][j + 1] == playerID
-							&& state[i + 2][j + 2] == playerID && state[i + 3][j + 3] == playerID)) {
+					if ((state[i][j] == playerID && state[i + 1][j + 1] == playerID && state[i + 2][j + 2] == playerID && state[i + 3][j + 3] == playerID)) {
 						return 1;
 					}
 				}
 
 				// diagonal up win
 				if (i - 3 >= 0 && j - 3 >= 0) {
-					if ((state[i][j] == playerID
-							&& state[i - 1][j - 1] == playerID
-							&& state[i - 2][j - 2] == playerID && state[i - 3][j - 3] == playerID)) {
+					if ((state[i][j] == playerID && state[i - 1][j - 1] == playerID && state[i - 2][j - 2] == playerID && state[i - 3][j - 3] == playerID)) {
 						return 1;
 					}
 				}
 				// vertical loss
 				if (j + 3 < state[i].length) {
-					if (state[i][j] == adversary
-							&& state[i][j + 1] == adversary
-							&& state[i][j + 2] == adversary
+					if (state[i][j] == adversary && state[i][j + 1] == adversary && state[i][j + 2] == adversary
 							&& state[i][j + 3] == adversary) {
 						return -1;
 					}
@@ -380,18 +356,15 @@ public class GameLogicMin implements IGameLogic {
 
 				// horizontal loss
 				if (i + 3 < state.length) {
-					if (state[i][j] == adversary
-							&& state[i + 1][j] == adversary
-							&& state[i + 2][j] == adversary
+					if (state[i][j] == adversary && state[i + 1][j] == adversary && state[i + 2][j] == adversary
 							&& state[i + 3][j] == adversary) {
 						return -1;
 					}
 				}
 
-				// diagonal down lossn
+				// diagonal down loss
 				if (i + 3 < state.length && j + 3 < state[i].length) {
-					if ((state[i][j] == adversary
-							&& state[i + 1][j + 1] == adversary
+					if ((state[i][j] == adversary && state[i + 1][j + 1] == adversary
 							&& state[i + 2][j + 2] == adversary && state[i + 3][j + 3] == adversary)) {
 						return -1;
 					}
@@ -399,14 +372,21 @@ public class GameLogicMin implements IGameLogic {
 
 				// diagonal up loss
 				if (i - 3 >= 0 && j - 3 >= 0) {
-					if ((state[i][j] == adversary
-							&& state[i - 1][j - 1] == adversary
+					if ((state[i][j] == adversary && state[i - 1][j - 1] == adversary
 							&& state[i - 2][j - 2] == adversary && state[i - 3][j - 3] == adversary)) {
 						return -1;
 					}
 				}
+
+			}
+			if (state[i][0] != 0) {
+				--possibleColumns;
 			}
 		}
+		if (possibleColumns == 0) {
+			return 0;
+		}
+
 		return -2;
 	}
 
@@ -417,16 +397,22 @@ public class GameLogicMin implements IGameLogic {
 	 * @param playerID
 	 * @return satte value
 	 */
-	public double connected(int[][] state, int playerID) {
+	public double connected(int[][] state, int playerID, int adversary) {
+		double oneConnected = 0;
 		double twoConnected = 0;
 		double threeConnected = 0;
 		double fourConnected = 0;
-		double stateValue = 1;
+		double stateValue = 0;
+		double adversaryOneConnected = 0;
+		double adversaryTwoConnected = 0;
+		double adversaryThreeConnected = 0;
+		double adversaryFourConnected = 0;
 		for (int i = 0; i < state.length; i++) {
 			for (int j = 0; j < state[i].length; j++) {
 				// vertical
 				if (j + 3 < state[i].length) {
 					if (state[i][j] == playerID) {
+						oneConnected++;
 						if (state[i][j + 1] == playerID) {
 							twoConnected++;
 							if (state[i][j + 2] == playerID) {
@@ -442,6 +428,7 @@ public class GameLogicMin implements IGameLogic {
 				// horizontal
 				if (i + 3 < state.length) {
 					if (state[i][j] == playerID) {
+						oneConnected++;
 						if (state[i + 1][j] == playerID) {
 							twoConnected++;
 							if (state[i + 2][j] == playerID) {
@@ -457,6 +444,7 @@ public class GameLogicMin implements IGameLogic {
 				// diagonal down win
 				if (i + 3 < state.length && j + 3 < state[i].length) {
 					if (state[i][j] == playerID) {
+						oneConnected++;
 						if (state[i + 1][j + 1] == playerID) {
 							twoConnected++;
 							if (state[i + 2][j + 2] == playerID) {
@@ -472,6 +460,7 @@ public class GameLogicMin implements IGameLogic {
 				// diagonal up win
 				if (i - 3 >= 0 && j - 3 >= 0) {
 					if (state[i][j] == playerID) {
+						oneConnected++;
 						if (state[i - 1][j - 1] == playerID) {
 							twoConnected++;
 							if (state[i - 2][j - 2] == playerID) {
@@ -483,18 +472,74 @@ public class GameLogicMin implements IGameLogic {
 						}
 					}
 				}
+				// vertical adversary
+				if (j + 3 < state[i].length) {
+					if (state[i][j] == adversary) {
+						adversaryOneConnected++;
+						if (state[i][j + 1] == adversary) {
+							adversaryTwoConnected++;
+							if (state[i][j + 2] == adversary) {
+								adversaryThreeConnected++;
+								if (state[i][j + 3] == adversary) {
+									adversaryFourConnected++;
+								}
+							}
+						}
+					}
+				}
+
+				// horizontal
+				if (i + 3 < state.length) {
+					if (state[i][j] == adversary) {
+						adversaryOneConnected++;
+						if (state[i + 1][j] == adversary) {
+							adversaryTwoConnected++;
+							if (state[i + 2][j] == adversary) {
+								adversaryThreeConnected++;
+								if (state[i + 3][j] == adversary) {
+									adversaryFourConnected++;
+								}
+							}
+						}
+					}
+				}
+
+				// diagonal down win
+				if (i + 3 < state.length && j + 3 < state[i].length) {
+					if (state[i][j] == adversary) {
+						adversaryOneConnected++;
+						if (state[i + 1][j + 1] == adversary) {
+							adversaryTwoConnected++;
+							if (state[i + 2][j + 2] == adversary) {
+								adversaryThreeConnected++;
+								if (state[i + 3][j + 3] == adversary) {
+									fourConnected++;
+								}
+							}
+						}
+					}
+				}
+
+				// diagonal up 
+				if (i - 3 >= 0 && j - 3 >= 0) {
+					if (state[i][j] == adversary) {
+						adversaryOneConnected++;
+						if (state[i - 1][j - 1] == adversary) {
+							adversaryTwoConnected++;
+							if (state[i - 2][j - 2] == adversary) {
+								adversaryThreeConnected++;
+								if (state[i - 3][j - 3] == adversary) {
+									adversaryFourConnected++;
+								}
+							}
+						}
+					}
+				}
 			}
 		}
-		
-		if (twoConnected != 0) {
-			stateValue = stateValue + (twoConnected * 4);
-		}
-		if (threeConnected != 0) {
-			stateValue = stateValue + (threeConnected * 6);
-		}
-		if (fourConnected != 0) {
-			stateValue = stateValue + (fourConnected * 8);
-		}
+
+		stateValue = stateValue +(oneConnected) + (twoConnected * 4) + (threeConnected * 6) + (fourConnected * 10)
+				-(adversaryOneConnected)- (adversaryTwoConnected * 4) - (adversaryThreeConnected * 6)-(adversaryFourConnected * 10);
 
 		return stateValue / 100;
 	}
