@@ -190,17 +190,11 @@ public class FourConnectGUI extends JComponent implements MouseListener
 	    }
 	}
 	repaint();
-<<<<<<< HEAD
+
 	
 	//keep playing
 //	if(winner == IGameLogic.Winner.NOT_FINISHED)
 //		mouseClicked(e);
-=======
-//	if(winner == IGameLogic.Winner.NOT_FINISHED){
-//		mouseClicked(e);
-//	}
-	
->>>>>>> mindis
     }
 		
     // Not used methods from the interface of MouseListener 

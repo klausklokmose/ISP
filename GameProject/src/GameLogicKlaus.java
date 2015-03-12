@@ -197,11 +197,11 @@ public class GameLogicKlaus implements IGameLogic {
 //		System.out.println(timeForLastTurn);
 		if (timeForLastTurn > 10_000) {
 			// time is lower than 10 sec
-			DEPTH -= 1;
+			DEPTH -= 1 *(timeForLastTurn / 10_000);
 		}
 		if (timeForLastTurn < 3_000) {
 			// time is higher than 10 sec
-			DEPTH += 2;
+			DEPTH += 1;
 		}
 		System.out.println("new depth = " + DEPTH + ". Time for last turn = "
 				+ (double) timeForLastTurn/1000 + " sec");
