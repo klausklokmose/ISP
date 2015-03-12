@@ -1,3 +1,6 @@
+import java.util.Iterator;
+import java.util.PriorityQueue;
+
 
 public class Action implements Comparable<Action>{
 	private final int column;
@@ -39,7 +42,24 @@ public class Action implements Comparable<Action>{
 	}
 
 	@Override
+	public boolean equals(Object arg0) {
+		if(!(arg0 instanceof Action)){
+			return false;
+		}
+		// TODO Auto-generated method stub
+		return column == ((Action)arg0).column && row == ((Action)arg0).row;
+	}
+
+	@Override
 	protected Object clone() {
 		return new Action(column, row);
+	}
+	
+	public static PriorityQueue<Action> cloneQueue(PriorityQueue<Action> queue){
+		PriorityQueue<Action> tmp = new PriorityQueue();
+		for (Iterator<Action> it = queue.iterator(); it.hasNext();) {
+			tmp.add((Action) it.next().clone());
+		}
+		return tmp;
 	}
 }

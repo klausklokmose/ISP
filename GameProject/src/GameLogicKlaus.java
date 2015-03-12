@@ -164,16 +164,13 @@ public class GameLogicKlaus implements IGameLogic {
 		// TODO Write your implementation for this method
 		// TODO call search
 		printBoard();
-		PriorityQueue<Action> tmp = new PriorityQueue();
-		for (Iterator<Action> it = queueMAX.iterator(); it.hasNext();) {
-			tmp.add((Action) it.next().clone());
-		}
+		PriorityQueue<Action> tmp = Action.cloneQueue(queueMAX);
 
-//		findMaxConnectedCoins(tmp, true);
-//		if (killer_move != null) {
-//			System.out.println("killer move at " + killer_move);
-//			return killer_move.getColumn();
-//		}
+		findMaxConnectedCoins(tmp, true);
+		if (killer_move != null) {
+			System.out.println("killer move at " + killer_move);
+			return killer_move.getColumn();
+		}
 
 		Action a = alpha_beta_search(board, 15);
 		print("" + a);
@@ -240,11 +237,12 @@ public class GameLogicKlaus implements IGameLogic {
 			return NEWEVAL(state);
 
 		int utility = utility(state);
-		if (utility >= 0) {
-			if (utility == 1) {
-				return Integer.MAX_VALUE;
-			}
+		if (utility == 1) {
+			return Integer.MAX_VALUE;
+		} else if (utility == -1) {
 			return utility;
+		} else if (utility == 0) {
+			return 0;
 		}
 		List<Action> actions = actions(state); // possible actions from current
 												// state
@@ -665,118 +663,49 @@ public class GameLogicKlaus implements IGameLogic {
 	 */
 	private int findMaxConnectedCoins(PriorityQueue<Action> actions,
 			boolean findKillerMove) {
+		PriorityQueue<Action> consistenQueue = Action.cloneQueue(actions);
 		// the higher the maxConnected is, the more connected coins there are
 		int maxConnected = 0;
 
-		// variables for vertical counting is done with a 'v_' prefix to the
-		// variables
-		int v_column = -1; // keeps track of which column we are looking at now.
-							// Changes when a new column is discovered
-		int v_counter = 0;
-		int v_lastRow = -1; // the last row we have looked at. -1 initially
-							// because we have no last row.
-
-		// variables for horizontal counting is done with a 'h_' prefix to the
-		// variables
-		int[] h_counter = new int[noRows];
-		int[] h_lastColumn = new int[noRows];
-		// initialize h_last to -1 because we have not seen any last rows yet
-		for (int i = 0; i < noRows; i++) {
-			h_lastColumn[i] = -1; // init
-			h_counter[i] = 0;
-		}
 		int size = actions.size();
 		for (int i = 0; i < size; i++) {
-
 			Action action = actions.poll();
-			// System.out.println(action);
-			// Action p = a;
 			int r = action.getRow();
 			int c = action.getColumn();
-			// print("LOOKING AT ACTION" + action);
 
 			// VERTICAL
-			if (c != v_column) { // reset vertical
-				// print("reset vertical");
-				v_column = c;
-				v_counter = 0;
-				v_lastRow = r;
-			}
-
-			// if (v_lastRow == -1) {
-			// // print("set row");
-			// v_lastRow = r;
-			// }
-
-			int v_diff = Math.abs(v_lastRow - r);
-			if (v_diff == 1 || v_diff == 0) {
-				// print("VERTICAL: decrease barrier");
-				v_lastRow = r;
-				v_counter++;
-			} else {
-				v_lastRow = -1;
-				v_counter = 0;
-			}
-
-			if (v_counter == FOUR) {
-				// print("found 4 coins!! VERTICAL in column " + v_column);
-				// System.out.println("VERTICAL: "+FOUR);
-				return v_counter;
-			} else if (maxConnected < v_counter) {
-				maxConnected = v_counter;
-				// System.out.println("VERTICAL: "+maxConnected);
-			}
-			if (findKillerMove && v_counter == 3) {
-				if (validBounds(c, r - 4)) {
-					if (board[c][r - 4] == 0) {
-						killer_move = new Action(c, r - 4);
-						return 0; // nothing, because we know that it will win
-									// the game
-					}
+			int v_barrier = 1; //now we have at least one out of four connected
+			Action[] vertical = new Action[] { new Action(c, r + 1),
+					new Action(c, r + 2), new Action(c, r + 3) };
+			for (int j = 0; j < vertical.length; j++) {
+				Action actio = vertical[j];
+				int player = (consistenQueue.contains(actio)) ? 1 : 0;
+				if(player == 1){
+					v_barrier++;
 				}
 			}
-
-			// HORIZONTAL
-			if (h_lastColumn[r] == -1) {
-				// print("inital h_how at row=" + r);
-				h_lastColumn[r] = c;
-				// h_counter[r]++;
+			if(v_barrier > maxConnected){
+				maxConnected = v_barrier;
 			}
-
-			int h_diff = Math.abs(h_lastColumn[r] - c);
-			if (h_diff == 1 || h_diff == 0) {
-				h_lastColumn[r] = c;
-				h_counter[r] = h_counter[r] + 1;
-				// System.out.println(action + " counter is: " + h_counter[r]);
-			} else { // reset
-				if (maxConnected < h_counter[r]) {
-					maxConnected = h_counter[r];
-					// System.out.println("HORIZONTAL: "+maxConnected);
-				}
-				// System.out.println("reset h counter at " + action);
-				h_lastColumn[r] = -1;
-				h_counter[r] = 0;
-			}
-			if (isFour(h_counter[r])) {
-				// print("found 4 coins!! HORIZONTAL in row " + r);
-				// System.out.println("HORIZONTAL WIN on row " + r);
+			if(v_barrier == FOUR){
 				return FOUR;
-			} else if (maxConnected < h_counter[r]) {
-				maxConnected = h_counter[r];
-				// System.out.println("HORIZONTAL: "+maxConnected);
 			}
-
-			// KILLER HORIZONTAL
-			if (findKillerMove && h_counter[r] == 3) {
-				if (validBounds(c + 1, r)) {
-					if (board[c + 1][r] == 0) {
-						if (isACoinDiagonalDownOrOutOfBoard(c, r)) {
-							killer_move = new Action(c + 1, r);
-							return 0; // nothing, because we know that it will
-										// win the game
-						}
-					}
+			
+			//HORIZONTAL
+			Action[] horizontal = new Action[] { new Action(c + 1, r), new Action(c + 2, r), new Action(c + 3, r) };
+			int h_barrier = 1;
+			for (int k = 0; k < horizontal.length; k++) {
+				Action actio = horizontal[k];
+				int player = (consistenQueue.contains(actio)) ? 1 : 0;
+				if(player == 1){
+					h_barrier++;
 				}
+			}
+			if(h_barrier > maxConnected){
+				maxConnected = h_barrier;
+			}
+			if(h_barrier == FOUR){
+				return FOUR;
 			}
 
 			// DIAGONAL running time = noPairs*4
@@ -838,6 +767,55 @@ public class GameLogicKlaus implements IGameLogic {
 			}
 
 		}// END LOOP THROUGH
+		
+		// HORIZONTAL
+		for (Action a : actions) {
+			int c = a.getColumn();
+			int r = a.getRow();
+			
+			
+//					if (h_lastColumn[r] == -1) {
+//						// print("inital h_how at row=" + r);
+//						h_lastColumn[r] = c;
+//						// h_counter[r]++;
+//					}
+//
+//					int h_diff = Math.abs(h_lastColumn[r] - c);
+//					if (h_diff == 1 || h_diff == 0) {
+//						h_lastColumn[r] = c;
+//						h_counter[r] = h_counter[r] + 1;
+//						// System.out.println(action + " counter is: " + h_counter[r]);
+//					} else { // reset
+//						if (maxConnected < h_counter[r]) {
+//							maxConnected = h_counter[r];
+//							// System.out.println("HORIZONTAL: "+maxConnected);
+//						}
+//						// System.out.println("reset h counter at " + action);
+//						h_lastColumn[r] = -1;
+//						h_counter[r] = 0;
+//					}
+//					if (isFour(h_counter[r])) {
+//						// print("found 4 coins!! HORIZONTAL in row " + r);
+//						// System.out.println("HORIZONTAL WIN on row " + r);
+//						return FOUR;
+//					} else if (maxConnected < h_counter[r]) {
+//						maxConnected = h_counter[r];
+//						// System.out.println("HORIZONTAL: "+maxConnected);
+//					}
+//
+//					// KILLER HORIZONTAL
+//					if (findKillerMove && h_counter[r] == 3) {
+//						if (validBounds(c + 1, r)) {
+//							if (board[c + 1][r] == 0) {
+//								if (isACoinDiagonalDownOrOutOfBoard(c, r)) {
+//									killer_move = new Action(c + 1, r);
+//									return 0; // nothing, because we know that it will
+//												// win the game
+//								}
+//							}
+//						}
+//					}
+		}
 
 		return maxConnected;
 	}
