@@ -547,12 +547,12 @@ public class GameLogicCemKlausMindaugas implements IGameLogic {
 			 * HORIZONTAL checks for max number of connected coins to the right.
 			 * 
 			 */
-			Action[] horizontal_right = new Action[] { 
+			Action[] horizontal = new Action[] { 
 					new Action(column + 1, row), new Action(column + 2, row), new Action(column + 3, row) };
 			
 			int horizontal_barrier = 1;
-			for (int k = 0; k < horizontal_right.length; k++) {
-				Action actio_right = horizontal_right[k];
+			for (int k = 0; k < horizontal.length; k++) {
+				Action actio_right = horizontal[k];
 				int player_right = (consistenQueue.contains(actio_right)) ? 1
 						: 0;
 				if (player_right == 1) {
