@@ -50,6 +50,7 @@ public class BDDExamples {
 		
 		BDD b_replaced = existed.replace(replacement);
 		
+		System.out.println(12%(4-1));
 		
 	}
 

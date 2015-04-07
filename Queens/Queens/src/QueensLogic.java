@@ -5,34 +5,71 @@
  * @author Stavros Amanatidis
  *
  */
-import java.util.*;
-import net.sf.javabdd.*;
+import net.sf.javabdd.BDD;
+import net.sf.javabdd.BDDFactory;
+import net.sf.javabdd.JFactory;
 
 public class QueensLogic {
 	private int x = 0;
 	private int y = 0;
 	private int[][] board = null;
+	private BDDFactory fact;
+	private BDD boardRule;
+	
 
 	public QueensLogic() {
-		
-		// Initialize T table of ROBDD
-		// initialize H table of ROBDD
-		// perhaps these tables could be some sort of Objects.
-		
-		// consider board as x*y amount of variables  
+	 
 	}
 
 	/**
 	 * Create a game board.
 	 * 
-	 * @param size
+	 * @param n
 	 *            of the board is applied vertically and horizontally
 	 */
-	public void initializeGame(int size) {
-		this.x = size;
-		this.y = size;
+	public void initializeGame(int n) {
+		this.x = n;
+		this.y = n;
 		this.board = new int[x][y];
+		
+		fact = JFactory.init(2000000, 200000);
+		fact.setVarNum(x*y);
+		
+		BDD True = fact.one();
+		BDD False = fact.zero();
+		int numVar = n*n;
+		// ordered by x0 < x1 < x2 ... < x(n*n)-1
+		boardRule = null;
+		for(int i=0; i<numVar; i++){
+			BDD rule = fact.ithVar(i);
+			int start_horizontal = i % n;
+			//horizontal loop
+			for	(int j = 0; j < numVar; j+=n) {
+				if(i!=j){
+					//x_i...and not x_j
+					rule = rule.and(fact.nithVar(j));
+				}
+			}
+			int start_vertical = i-start_horizontal;
+			//vertical loop
+			for (int j = start_vertical; j < n; j++) {
+				rule = rule.and(fact.nithVar(j));
+			}
+			if(boardRule == null){
+				boardRule = rule;
+			}else{
+				boardRule=boardRule.and(rule);
+			}
+			
+//			int start_diagonal_down = (i/n)*(i%n);
+//			for (start_diagonal_down = i; start_diagonal_down < n; start_diagonal_down-=(n-1) );
+		
+			
+		}
+		
 	}
+
+
 
 	/**
 	 * Return a game board.
@@ -60,9 +97,16 @@ public class QueensLogic {
 
 		// insert queen
 		board[column][row] = 1;
-
+		boardRule.forAll(boardRule.getFactory().v)
+		
+		
+		
+		
 		printBoard();
 
+		
+		
+		
 		// put some logic here..
 
 		
