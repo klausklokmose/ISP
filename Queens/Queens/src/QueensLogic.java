@@ -12,10 +12,10 @@ import net.sf.javabdd.JFactory;
 public class QueensLogic {
 	private int n = 0;
 	private int[][] board = null;
-	private BDD[][] boardRule;
 	private BDD queens;
+	private BDD restricted;
 	private BDDFactory fact;
-	private int numVar;
+	private int numberOfVariables;
 
 	// private BDD boardRule;
 
@@ -26,72 +26,83 @@ public class QueensLogic {
 	/**
 	 * Create a game board.
 	 * 
-	 * @param n
-	 *            of the board is applied vertically and horizontally
+	 * @param n of the board is applied vertically and horizontally
 	 */
 	public void initializeGame(int n) {
 		this.n = n;
 		this.board = new int[n][n];
-		this.boardRule = new BDD[n][n];
-		this.numVar = n * n;
+		this.numberOfVariables = n * n;
 
-		fact = JFactory.init(2000000, 200000);
+		//initialize factory
+		fact = JFactory.init(2_000_000, 200_000);
 		fact.setVarNum(n * n);
-
-		// init bdd
-		for (int i = 0; i < n; i++) {
-			for (int j = 0; j < n; j++) {
-				boardRule[i][j] = fact.ithVar((j * n) + i);
-			}
-		}
+		
+		//The BDD - conjunctions of the implications Xij -> the rules of Xij
+		queens = fact.one();
+		//variables are changed to "constants" true/false during execution
+		restricted = fact.one();
+		
 		// ordered by x0 < x1 < x2 ... < x(n*n)-1
 		for (int i = 0; i < n; i++) {
 			for (int j = 0; j < n; j++) {
-				System.out.println("build: ["+i+", "+j+"]");
-				build(i, j);
+				queens.andWith(build(i, j));
 			}
 		}
-		
-
 	}
 
-	public void build(int i, int j){
-			// horizontal loop
-			for (int l = 0; l < n; l++) {
-				if (l != j) {
-					boardRule[i][j] = boardRule[i][j].and(boardRule[i][l].apply(boardRule[i][j], BDDFactory.nand));
-				}
+	public BDD build(int i, int j) {
+		// horizontal loop
+		BDD cell = fact.one();
+		for (int l = 0; l < n; l++) {
+			if (l != j) {
+				cell = cell.and(fact.nithVar(getVarNumber(n, i, l)));
 			}
-			
+
 			// vertical loop
 			for (int k = 0; k < n; k++) {
-				if(k != i){
-					boardRule[i][j] = boardRule[i][j].and(boardRule[k][j].apply(boardRule[i][j], BDDFactory.nand));
+				if (k != i) {
+					cell = cell.and(fact.nithVar(getVarNumber(n, k, j)));
 				}
 			}
-			
-			//diagonal down
+
+			// diagonal down
 			for (int k = 0; k < n; k++) {
 				int diag = j + k - i;
-				if(diag >= 0 && diag < n){
-					if(k != i){
-						boardRule[i][j] = boardRule[i][j].and(boardRule[k][diag].apply(boardRule[i][j], BDDFactory.nand));
+				if (diag >= 0 && diag < n) {
+					if (k != i) {
+						cell = cell.and(fact.nithVar(getVarNumber(n, k, diag)));
 					}
 				}
 			}
-			
-			//diagonal up
+
+			// diagonal up
 			for (int k = 0; k < n; k++) {
 				int diag = j + i - k;
-				if(diag >= 0 && diag < n){
-					if(k != i){
-						boardRule[i][j] = boardRule[i][j].and(boardRule[k][diag].apply(boardRule[i][j], BDDFactory.nand));
+				if (diag >= 0 && diag < n) {
+					if (k != i) {
+						cell = cell.and(fact.nithVar(getVarNumber(n, k, diag)));
 					}
 				}
 			}
-			
+
+		}
+		//there should only be one queen per row
+			cell.andWith(oneQueenPerRow());
+		return fact.ithVar(getVarNumber(n, i, j)).imp(cell);
 	}
 
+	public BDD oneQueenPerRow(){
+		BDD rule = fact.one();
+		for (int i = 0; i < n; i++) {
+			BDD innerRule = fact.zero();
+			for (int j = 0; j < n; j++) {
+				innerRule.orWith(fact.ithVar(getVarNumber(n, i, j)));
+			}
+			
+			rule.andWith(innerRule);
+		}
+		return rule;
+	}
 	/**
 	 * Return a game board.
 	 * 
@@ -119,58 +130,43 @@ public class QueensLogic {
 		// insert queen
 		board[column][row] = 1;
 
-		//TODO put some logic here..
-		//update restrictions on variable
+		restricted = queens.restrict(getRestrictions());
+		boolean finished = restricted.pathCount() == 1;
 		for (int i = 0; i < n; i++) {
 			for (int j = 0; j < n; j++) {
-				if(board[i][j] == 1){
-					int varNum = (j * n) + i;
-					
-					BDD restriction = fact.ithVar(varNum);
-					boardRule[i][j].restrict(restriction);
-				}
-			}
-		}
-		
-		int[] validDomains = new int[n*n];
-		for (int k = 0; k < validDomains.length; k++) {
-			BDD var = fact.ithVar(k);
-			BDD restricted = var.restrict(var);
-			
-			if(!restricted.isZero()){
-				validDomains[k] = 1;
-			}
-		}
-		int validSpots = 0;
-		for (int i = 0; i < n; i++) {
-			for (int j = 0; j < n; j++) {
-				int varNum = (j * n) + i;
-				
-				if(validDomains[varNum] == 0){
+				int varNum = getVarNumber(n, i, j);
+				if(restricted.restrict(fact.ithVar(varNum)).isZero()){
 					board[i][j] = -1;
-				}
-				else{
-					validSpots++;
-				}
-			}
-		}
-		System.out.println("valid spots: "+validSpots);
-		//finished the "game"
-		if(validSpots == n){
-			for (int i = 0; i < n; i++) {
-				for (int j = 0; j < n; j++) {
-					if(board[i][j] != -1){
-						board[i][j] = 1;
-					}
+				}else if(finished){
+					board[i][j] = 1;
 				}
 			}
 		}
-		
-		printBoard();
 		return true;
 	}
-	
 
+	private int getVarNumber(int n, int i, int j) {
+		return (j * n) + i;
+	}
+
+	private BDD getRestrictions(){
+		BDD res = fact.one();
+		//for all the variables, make conjunction of the variables (i.e. their constraints)
+		for (int i = 0; i < numberOfVariables; i++) {
+			if(board[getRowPosition(i)][getColumnPosition(i)] == 1){
+				res.andWith(fact.ithVar(i));
+			}
+		}
+		return res;
+	}
+
+	private int getRowPosition(int index){
+		return index % n;
+	}
+
+	private int getColumnPosition(int index){
+		return index / n;
+	}
 
 	/**
 	 * Prints the board.
