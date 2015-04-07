@@ -13,7 +13,7 @@ public class QueensLogic {
 	private int n = 0;
 	private int[][] board = null;
 	private BDD[][] boardRule;
-	private BDD bdd;
+	private BDD queens;
 	private BDDFactory fact;
 	private int numVar;
 
@@ -41,7 +41,7 @@ public class QueensLogic {
 		// init bdd
 		for (int i = 0; i < n; i++) {
 			for (int j = 0; j < n; j++) {
-				boardRule[i][j] = fact.ithVar(i * n + j);
+				boardRule[i][j] = fact.ithVar((j * n) + i);
 			}
 		}
 		// ordered by x0 < x1 < x2 ... < x(n*n)-1
@@ -56,19 +56,17 @@ public class QueensLogic {
 	}
 
 	public void build(int i, int j){
-			BDD cell = boardRule[i][j];
-			
 			// horizontal loop
 			for (int l = 0; l < n; l++) {
 				if (l != j) {
-					cell = cell.andWith(boardRule[i][l].apply(cell, BDDFactory.nand));
+					boardRule[i][j] = boardRule[i][j].and(boardRule[i][l].apply(boardRule[i][j], BDDFactory.nand));
 				}
 			}
 			
 			// vertical loop
 			for (int k = 0; k < n; k++) {
 				if(k != i){
-					cell = cell.andWith(boardRule[k][j].apply(cell, BDDFactory.nand));
+					boardRule[i][j] = boardRule[i][j].and(boardRule[k][j].apply(boardRule[i][j], BDDFactory.nand));
 				}
 			}
 			
@@ -77,7 +75,7 @@ public class QueensLogic {
 				int diag = j + k - i;
 				if(diag >= 0 && diag < n){
 					if(k != i){
-						cell = cell.andWith(boardRule[k][diag].apply(cell, BDDFactory.nand));
+						boardRule[i][j] = boardRule[i][j].and(boardRule[k][diag].apply(boardRule[i][j], BDDFactory.nand));
 					}
 				}
 			}
@@ -87,10 +85,11 @@ public class QueensLogic {
 				int diag = j + i - k;
 				if(diag >= 0 && diag < n){
 					if(k != i){
-						cell = cell.andWith(boardRule[k][diag].apply(cell, BDDFactory.nand));
+						boardRule[i][j] = boardRule[i][j].and(boardRule[k][diag].apply(boardRule[i][j], BDDFactory.nand));
 					}
 				}
 			}
+			
 	}
 
 	/**
@@ -119,13 +118,13 @@ public class QueensLogic {
 
 		// insert queen
 		board[column][row] = 1;
-		printBoard();
 
 		//TODO put some logic here..
+		//update restrictions on variable
 		for (int i = 0; i < n; i++) {
 			for (int j = 0; j < n; j++) {
 				if(board[i][j] == 1){
-					int varNum = i * n + j;
+					int varNum = (j * n) + i;
 					
 					BDD restriction = fact.ithVar(varNum);
 					boardRule[i][j].restrict(restriction);
@@ -133,9 +132,45 @@ public class QueensLogic {
 			}
 		}
 		
+		int[] validDomains = new int[n*n];
+		for (int k = 0; k < validDomains.length; k++) {
+			BDD var = fact.ithVar(k);
+			BDD restricted = var.restrict(var);
+			
+			if(!restricted.isZero()){
+				validDomains[k] = 1;
+			}
+		}
+		int validSpots = 0;
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < n; j++) {
+				int varNum = (j * n) + i;
+				
+				if(validDomains[varNum] == 0){
+					board[i][j] = -1;
+				}
+				else{
+					validSpots++;
+				}
+			}
+		}
+		System.out.println("valid spots: "+validSpots);
+		//finished the "game"
+		if(validSpots == n){
+			for (int i = 0; i < n; i++) {
+				for (int j = 0; j < n; j++) {
+					if(board[i][j] != -1){
+						board[i][j] = 1;
+					}
+				}
+			}
+		}
 		
+		printBoard();
 		return true;
 	}
+	
+
 
 	/**
 	 * Prints the board.
