@@ -10,15 +10,17 @@ import net.sf.javabdd.BDDFactory;
 import net.sf.javabdd.JFactory;
 
 public class QueensLogic {
-	private int x = 0;
-	private int y = 0;
+	private int n = 0;
 	private int[][] board = null;
+	private BDD[][] boardRule;
+	private BDD bdd;
 	private BDDFactory fact;
-	private BDD boardRule;
-	
+	private int numVar;
+
+	// private BDD boardRule;
 
 	public QueensLogic() {
-	 
+
 	}
 
 	/**
@@ -28,48 +30,68 @@ public class QueensLogic {
 	 *            of the board is applied vertically and horizontally
 	 */
 	public void initializeGame(int n) {
-		this.x = n;
-		this.y = n;
-		this.board = new int[x][y];
-		
+		this.n = n;
+		this.board = new int[n][n];
+		this.boardRule = new BDD[n][n];
+		this.numVar = n * n;
+
 		fact = JFactory.init(2000000, 200000);
-		fact.setVarNum(x*y);
-		
-		BDD True = fact.one();
-		BDD False = fact.zero();
-		int numVar = n*n;
+		fact.setVarNum(n * n);
+
+		// init bdd
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < n; j++) {
+				boardRule[i][j] = fact.ithVar(i * n + j);
+			}
+		}
 		// ordered by x0 < x1 < x2 ... < x(n*n)-1
-		boardRule = null;
-		for(int i=0; i<numVar; i++){
-			BDD rule = fact.ithVar(i);
-			int start_horizontal = i % n;
-			//horizontal loop
-			for	(int j = 0; j < numVar; j+=n) {
-				if(i!=j){
-					//x_i...and not x_j
-					rule = rule.and(fact.nithVar(j));
-				}
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < n; j++) {
+				System.out.println("build: ["+i+", "+j+"]");
+				build(i, j);
 			}
-			int start_vertical = i-start_horizontal;
-			//vertical loop
-			for (int j = start_vertical; j < n; j++) {
-				rule = rule.and(fact.nithVar(j));
-			}
-			if(boardRule == null){
-				boardRule = rule;
-			}else{
-				boardRule=boardRule.and(rule);
-			}
-			
-//			int start_diagonal_down = (i/n)*(i%n);
-//			for (start_diagonal_down = i; start_diagonal_down < n; start_diagonal_down-=(n-1) );
-		
-			
 		}
 		
+
 	}
 
-
+	public void build(int i, int j){
+			BDD cell = boardRule[i][j];
+			
+			// horizontal loop
+			for (int l = 0; l < n; l++) {
+				if (l != j) {
+					cell = cell.andWith(boardRule[i][l].apply(cell, BDDFactory.nand));
+				}
+			}
+			
+			// vertical loop
+			for (int k = 0; k < n; k++) {
+				if(k != i){
+					cell = cell.andWith(boardRule[k][j].apply(cell, BDDFactory.nand));
+				}
+			}
+			
+			//diagonal down
+			for (int k = 0; k < n; k++) {
+				int diag = j + k - i;
+				if(diag >= 0 && diag < n){
+					if(k != i){
+						cell = cell.andWith(boardRule[k][diag].apply(cell, BDDFactory.nand));
+					}
+				}
+			}
+			
+			//diagonal up
+			for (int k = 0; k < n; k++) {
+				int diag = j + i - k;
+				if(diag >= 0 && diag < n){
+					if(k != i){
+						cell = cell.andWith(boardRule[k][diag].apply(cell, BDDFactory.nand));
+					}
+				}
+			}
+	}
 
 	/**
 	 * Return a game board.
@@ -97,23 +119,24 @@ public class QueensLogic {
 
 		// insert queen
 		board[column][row] = 1;
-		boardRule.forAll(boardRule.getFactory().v)
-		
-		
-		
-		
 		printBoard();
 
-		
-		
-		
-		// put some logic here..
-
+		//TODO put some logic here..
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < n; j++) {
+				if(board[i][j] == 1){
+					int varNum = i * n + j;
+					
+					BDD restriction = fact.ithVar(varNum);
+					boardRule[i][j].restrict(restriction);
+				}
+			}
+		}
 		
 		
 		return true;
 	}
-	
+
 	/**
 	 * Prints the board.
 	 */
