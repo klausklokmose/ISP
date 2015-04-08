@@ -10,14 +10,12 @@ import net.sf.javabdd.BDDFactory;
 import net.sf.javabdd.JFactory;
 
 public class QueensLogic {
-	private int n = 0;
+	private int n = 0; // size of the board
 	private int[][] board = null;
-	private BDD queens;
-	private BDD restricted;
+	private BDD queens; // all game rules
+	private BDD restricted; // restrictions of the game
 	private BDDFactory fact;
 	private int numberOfVariables;
-
-	// private BDD boardRule;
 
 	public QueensLogic() {
 
@@ -26,22 +24,23 @@ public class QueensLogic {
 	/**
 	 * Create a game board.
 	 * 
-	 * @param n of the board is applied vertically and horizontally
+	 * @param n
+	 *            of the board is applied vertically and horizontally
 	 */
 	public void initializeGame(int n) {
 		this.n = n;
 		this.board = new int[n][n];
 		this.numberOfVariables = n * n;
 
-		//initialize factory
+		// initialize factory
 		fact = JFactory.init(2_000_000, 200_000);
 		fact.setVarNum(n * n);
-		
-		//The BDD - conjunctions of the implications Xij -> the rules of Xij
+
+		// The BDD - conjunctions of the implications Xij -> the rules of Xij
 		queens = fact.one();
-		//variables are changed to "constants" true/false during execution
+		// variables are changed to "constants" true/false during execution
 		restricted = fact.one();
-		
+
 		// ordered by x0 < x1 < x2 ... < x(n*n)-1
 		for (int i = 0; i < n; i++) {
 			for (int j = 0; j < n; j++) {
@@ -50,22 +49,33 @@ public class QueensLogic {
 		}
 	}
 
+	/**
+	 * Method that defines the rules of nQueen game for each cell
+	 * 
+	 * @param i
+	 *            column of the cell
+	 * @param j
+	 *            row of the cell
+	 * @return BDD for a specific cell
+	 */
 	public BDD build(int i, int j) {
-		// horizontal loop
 		BDD cell = fact.one();
+
 		for (int l = 0; l < n; l++) {
+
+			// defining horizontal rules
 			if (l != j) {
 				cell = cell.and(fact.nithVar(getVarNumber(n, i, l)));
 			}
 
-			// vertical loop
+			// defining vertical rules
 			for (int k = 0; k < n; k++) {
 				if (k != i) {
 					cell = cell.and(fact.nithVar(getVarNumber(n, k, j)));
 				}
 			}
 
-			// diagonal down
+			// defining diagonal down rules
 			for (int k = 0; k < n; k++) {
 				int diag = j + k - i;
 				if (diag >= 0 && diag < n) {
@@ -75,7 +85,7 @@ public class QueensLogic {
 				}
 			}
 
-			// diagonal up
+			// defining diagonal up rules
 			for (int k = 0; k < n; k++) {
 				int diag = j + i - k;
 				if (diag >= 0 && diag < n) {
@@ -86,23 +96,29 @@ public class QueensLogic {
 			}
 
 		}
-		//there should only be one queen per row
-			cell.andWith(oneQueenPerRow());
+		// add one queen per row rule
+		cell.andWith(oneQueenPerRow());
 		return fact.ithVar(getVarNumber(n, i, j)).imp(cell);
 	}
 
-	public BDD oneQueenPerRow(){
+	/**
+	 * Defines a one queen per row rule
+	 * 
+	 * @return BDD
+	 */
+	public BDD oneQueenPerRow() {
 		BDD rule = fact.one();
 		for (int i = 0; i < n; i++) {
 			BDD innerRule = fact.zero();
 			for (int j = 0; j < n; j++) {
 				innerRule.orWith(fact.ithVar(getVarNumber(n, i, j)));
 			}
-			
+
 			rule.andWith(innerRule);
 		}
 		return rule;
 	}
+
 	/**
 	 * Return a game board.
 	 * 
@@ -118,7 +134,7 @@ public class QueensLogic {
 	 * 
 	 * @param column
 	 * @param row
-	 * @return
+	 * @return boolean
 	 */
 	public boolean insertQueen(int column, int row) {
 
@@ -127,17 +143,26 @@ public class QueensLogic {
 			return true;
 		}
 
-		// insert queen
-		board[column][row] = 1;
+		board[column][row] = 1; // insert queen
 
-		restricted = queens.restrict(getRestrictions());
+		restricted = queens.restrict(getRestrictions()); // restrict game rules with
+															// restrictions
+
+		// boolean true if number of paths leading to the true terminal is 1.
 		boolean finished = restricted.pathCount() == 1;
+
 		for (int i = 0; i < n; i++) {
 			for (int j = 0; j < n; j++) {
-				int varNum = getVarNumber(n, i, j);
-				if(restricted.restrict(fact.ithVar(varNum)).isZero()){
+				int varNum = getVarNumber(n, i, j); // get number of variables
+
+				// if restricted BDD leads to state 0 (False), then add invalid
+				// cell to the board.
+				if (restricted.restrict(fact.ithVar(varNum)).isZero()) {
 					board[i][j] = -1;
-				}else if(finished){
+				}
+				// if there only left one path to terminal state 1, add queen to
+				// the board
+				else if (finished) {
 					board[i][j] = 1;
 				}
 			}
@@ -145,26 +170,56 @@ public class QueensLogic {
 		return true;
 	}
 
+	/**
+	 * Gets number of variables in BDD of the cell
+	 * 
+	 * @param n
+	 *            board size
+	 * @param i
+	 *            cell's column
+	 * @param j
+	 *            cell's row
+	 * @return number of variables
+	 */
 	private int getVarNumber(int n, int i, int j) {
 		return (j * n) + i;
 	}
 
-	private BDD getRestrictions(){
+	/**
+	 * Creates restrictions based on the state of the board
+	 * 
+	 * @return BDD of restrictions
+	 */
+	private BDD getRestrictions() {
 		BDD res = fact.one();
-		//for all the variables, make conjunction of the variables (i.e. their constraints)
+		// for all the variables, make conjunction of the variables (i.e. their
+		// constraints)
 		for (int i = 0; i < numberOfVariables; i++) {
-			if(board[getRowPosition(i)][getColumnPosition(i)] == 1){
+			// if the cell in the board has a queen add restriction rule
+			if (board[getRowPosition(i)][getColumnPosition(i)] == 1) {
 				res.andWith(fact.ithVar(i));
 			}
 		}
 		return res;
 	}
 
-	private int getRowPosition(int index){
+	/**
+	 * Get row position of the variable in the board
+	 * 
+	 * @param index
+	 * @return row position
+	 */
+	private int getRowPosition(int index) {
 		return index % n;
 	}
 
-	private int getColumnPosition(int index){
+	/**
+	 * Get column position of the variable in the board
+	 * 
+	 * @param index
+	 * @return column position
+	 */
+	private int getColumnPosition(int index) {
 		return index / n;
 	}
 
