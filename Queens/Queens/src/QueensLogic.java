@@ -2,7 +2,7 @@
  * This class implements the logic behind the BDD for the n-queens problem
  * You should implement all the missing methods
  * 
- * @author Stavros Amanatidis
+ * @author Klaus, Mindaugas, Cem
  *
  */
 import net.sf.javabdd.BDD;
@@ -65,13 +65,13 @@ public class QueensLogic {
 
 			// defining horizontal rules
 			if (l != j) {
-				cell = cell.and(fact.nithVar(getVarNumber(n, i, l)));
+				cell.andWith(fact.nithVar(getVarNumber(n, i, l)));
 			}
 
 			// defining vertical rules
 			for (int k = 0; k < n; k++) {
 				if (k != i) {
-					cell = cell.and(fact.nithVar(getVarNumber(n, k, j)));
+					cell.andWith(fact.nithVar(getVarNumber(n, k, j)));
 				}
 			}
 
@@ -80,7 +80,7 @@ public class QueensLogic {
 				int diag = j + k - i;
 				if (diag >= 0 && diag < n) {
 					if (k != i) {
-						cell = cell.and(fact.nithVar(getVarNumber(n, k, diag)));
+						cell.andWith(fact.nithVar(getVarNumber(n, k, diag)));
 					}
 				}
 			}
@@ -90,7 +90,7 @@ public class QueensLogic {
 				int diag = j + i - k;
 				if (diag >= 0 && diag < n) {
 					if (k != i) {
-						cell = cell.and(fact.nithVar(getVarNumber(n, k, diag)));
+						cell.andWith(fact.nithVar(getVarNumber(n, k, diag)));
 					}
 				}
 			}
@@ -223,17 +223,4 @@ public class QueensLogic {
 		return index / n;
 	}
 
-	/**
-	 * Prints the board.
-	 */
-	private void printBoard() {
-		System.out.println("\t\tNew board state");
-		for (int col = 0; col < board[0].length; col++) {
-			String str = "";
-			for (int j = 0; j < board.length; j++) {
-				str += "\t" + board[j][col];
-			}
-			System.out.println(str + "\n");
-		}
-	}
 }
