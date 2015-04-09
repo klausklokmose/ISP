@@ -13,7 +13,6 @@ public class QueensLogic {
 	private int n = 0; // size of the board
 	private int[][] board = null;
 	private BDD queens; // all game rules
-	private BDD restricted; // restrictions of the game
 	private BDDFactory fact;
 	private int numberOfVariables;
 
@@ -29,17 +28,16 @@ public class QueensLogic {
 	 */
 	public void initializeGame(int n) {
 		this.n = n;
-		this.board = new int[n][n];
 		this.numberOfVariables = n * n;
+		this.board = new int[n][n];
 
-		// initialize factory
+		// initialize factory (amount of nodes, cache)
 		fact = JFactory.init(2_000_000, 200_000);
-		fact.setVarNum(n * n);
+		fact.setVarNum(numberOfVariables);
 
 		// The BDD - conjunctions of the implications Xij -> the rules of Xij
 		queens = fact.one();
 		// variables are changed to "constants" true/false during execution
-		restricted = fact.one();
 
 		// ordered by x0 < x1 < x2 ... < x(n*n)-1
 		for (int i = 0; i < n; i++) {
@@ -52,10 +50,8 @@ public class QueensLogic {
 	/**
 	 * Method that defines the rules of nQueen game for each cell
 	 * 
-	 * @param i
-	 *            column of the cell
-	 * @param j
-	 *            row of the cell
+	 * @param i row of the cell
+	 * @param j column of the cell
 	 * @return BDD for a specific cell
 	 */
 	public BDD build(int i, int j) {
@@ -145,23 +141,21 @@ public class QueensLogic {
 
 		board[column][row] = 1; // insert queen
 
-		restricted = queens.restrict(getRestrictions()); // restrict game rules with
-															// restrictions
+		BDD restricted = queens.restrict(getRestrictions()); // restrict game (where queens are placed)
 
 		// boolean true if number of paths leading to the true terminal is 1.
 		boolean finished = restricted.pathCount() == 1;
 
 		for (int i = 0; i < n; i++) {
 			for (int j = 0; j < n; j++) {
-				int varNum = getVarNumber(n, i, j); // get number of variables
+				int varNum = getVarNumber(n, i, j); // get variable number in BDD
 
 				// if restricted BDD leads to state 0 (False), then add invalid
 				// cell to the board.
 				if (restricted.restrict(fact.ithVar(varNum)).isZero()) {
 					board[i][j] = -1;
 				}
-				// if there only left one path to terminal state 1, add queen to
-				// the board
+				// fill in queens remaining if there is one path
 				else if (finished) {
 					board[i][j] = 1;
 				}
@@ -171,7 +165,7 @@ public class QueensLogic {
 	}
 
 	/**
-	 * Gets number of variables in BDD of the cell
+	 * Gets the variable number in BDD
 	 * 
 	 * @param n
 	 *            board size
@@ -204,23 +198,23 @@ public class QueensLogic {
 	}
 
 	/**
-	 * Get row position of the variable in the board
+	 * Get row position of the variable number in the board
 	 * 
-	 * @param index
+	 * @param varNumber
 	 * @return row position
 	 */
-	private int getRowPosition(int index) {
-		return index % n;
+	private int getRowPosition(int varNumber) {
+		return varNumber % n;
 	}
 
 	/**
-	 * Get column position of the variable in the board
+	 * Get column position of the variable number in the board
 	 * 
-	 * @param index
+	 * @param varNumber
 	 * @return column position
 	 */
-	private int getColumnPosition(int index) {
-		return index / n;
+	private int getColumnPosition(int varNumber) {
+		return varNumber / n;
 	}
 
 }
